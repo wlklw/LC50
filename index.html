@@ -740,4 +740,475 @@
                 // 檢查濃度-反應關係的單調性
                 let isMonotonic = true;
                 for (let i = 1; i < data.length; i++) {
-                    if (data[i
+                    if (data[i].concentration > data[i-1].concentration && 
+                        data[i].mortality < data[i-1].mortality) {
+                        isMonotonic = false;
+                        break;
+                    }
+                }
+
+                if (!isMonotonic) {
+                    return { 
+                        isValid: true, 
+                        message: '警告：數據未完全符合單調遞增關係，結果可能不夠準確' 
+                    };
+                }
+
+                return { 
+                    isValid: true, 
+                    message: `數據驗證通過，共${data.length}個有效數據點，濃度範圍：${minConc.toFixed(2)}-${maxConc.toFixed(2)}，死亡率範圍：${(minMort*100).toFixed(1)}%-${(maxMort*100).toFixed(1)}%` 
+                };
+            }
+
+            // 改進的 Probit 轉換函數
+            function probit(p) {
+                // 確保 p 在有效範圍內
+                if (p <= 0 || p >= 1) {
+                    throw new Error(`無效的死亡率值: ${p}`);
+                }
+                
+                // 使用逆標準正態分佈函數
+                const z = inverseNormalCDF(p);
+                return 5 + z;
+            }
+
+            // 逆標準正態分佈函數（使用 Beasley-Springer-Moro 算法的簡化版本）
+            function inverseNormalCDF(p) {
+                if (p < 0.5) {
+                    // 對稱性：F^(-1)(p) = -F^(-1)(1-p)
+                    return -inverseNormalCDF(1 - p);
+                }
+                
+                const t = Math.sqrt(-2 * Math.log(1 - p));
+                
+                // 多項式逼近
+                const c0 = 2.515517;
+                const c1 = 0.802853;
+                const c2 = 0.010328;
+                const d1 = 1.432788;
+                const d2 = 0.189269;
+                const d3 = 0.001308;
+                
+                return t - ((c2*t + c1)*t + c0) / (((d3*t + d2)*t + d1)*t + 1);
+            }
+
+            // 改進的 Probit 回歸計算
+            function calculateProbit(data) {
+                const n = data.length;
+                
+                // 使用加權最小二乘法
+                let sumW = 0, sumWX = 0, sumWY = 0, sumWXY = 0, sumWX2 = 0;
+                
+                data.forEach(d => {
+                    const logConc = Math.log10(d.concentration);
+                    const weight = calculateWeight(d.adjustedMortality, d.total);
+                    
+                    sumW += weight;
+                    sumWX += weight * logConc;
+                    sumWY += weight * d.probit;
+                    sumWXY += weight * logConc * d.probit;
+                    sumWX2 += weight * logConc * logConc;
+                });
+
+                const denominator = sumW * sumWX2 - sumWX * sumWX;
+                if (Math.abs(denominator) < 1e-10) {
+                    throw new Error('回歸計算失敗：矩陣奇異');
+                }
+                
+                const a = (sumWY * sumWX2 - sumWX * sumWXY) / denominator;
+                const b = (sumW * sumWXY - sumWX * sumWY) / denominator;
+                
+                if (b <= 0) {
+                    throw new Error('回歸線斜率為負或零，數據不符合劑量-反應關係');
+                }
+
+                // 計算各種LC值
+                const logLC50 = (5 - a) / b;
+                const logLC75 = (5.67 - a) / b; // probit(0.75) ≈ 5.67
+                const logLC90 = (6.28 - a) / b; // probit(0.90) ≈ 6.28
+
+                // 計算信賴區間（簡化方法）
+                const confidenceInterval = calculateConfidenceInterval(data, a, b, logLC50);
+                
+                // 計算擬合優度
+                const goodnessOfFit = calculateGoodnessOfFit(data, a, b);
+
+                return {
+                    lc50: Math.pow(10, logLC50),
+                    lc75: Math.pow(10, logLC75),
+                    lc90: Math.pow(10, logLC90),
+                    ci50: confidenceInterval,
+                    slope: b,
+                    intercept: a,
+                    r2: goodnessOfFit.r2,
+                    chiSquare: goodnessOfFit.chiSquare,
+                    pValue: goodnessOfFit.pValue
+                };
+            }
+
+            // 計算權重（基於死亡率和樣本數）
+            function calculateWeight(p, n) {
+                // 使用標準的 Probit 分析權重公式
+                const z = inverseNormalCDF(p);
+                const phi = (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * z * z); // 標準正態密度
+                return (n * phi * phi) / (p * (1 - p));
+            }
+
+            // 計算信賴區間
+            function calculateConfidenceInterval(data, a, b, logLC50) {
+                const n = data.length;
+                const df = n - 2;
+                
+                // 計算標準誤差
+                let sumSquaredResiduals = 0;
+                data.forEach(d => {
+                    const logConc = Math.log10(d.concentration);
+                    const predicted = a + b * logConc;
+                    sumSquaredResiduals += Math.pow(d.probit - predicted, 2);
+                });
+                
+                const mse = sumSquaredResiduals / df;
+                const seSlope = Math.sqrt(mse / data.reduce((sum, d) => {
+                    const logConc = Math.log10(d.concentration);
+                    const meanLogConc = data.reduce((s, item) => s + Math.log10(item.concentration), 0) / n;
+                    return sum + Math.pow(logConc - meanLogConc, 2);
+                }, 0));
+                
+                // t 值 for 95% 信賴區間
+                const tValue = getTValue(df, 0.025);
+                const seLogLC50 = seSlope / Math.abs(b);
+                
+                const margin = tValue * seLogLC50;
+                return [
+                    Math.pow(10, logLC50 - margin),
+                    Math.pow(10, logLC50 + margin)
+                ];
+            }
+
+            // 簡化的 t 分佈臨界值
+            function getTValue(df, alpha) {
+                // 簡化的 t 表，對於常見的自由度
+                const tTable = {
+                    1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571,
+                    6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
+                    15: 2.131, 20: 2.086, 30: 2.042, 50: 2.009, 100: 1.984
+                };
+                
+                if (tTable[df]) return tTable[df];
+                if (df <= 30) return 2.042;
+                return 1.96; // 大樣本近似
+            }
+
+            // 計算擬合優度
+            function calculateGoodnessOfFit(data, a, b) {
+                const n = data.length;
+                let ssTot = 0, ssRes = 0;
+                const meanProbit = data.reduce((sum, d) => sum + d.probit, 0) / n;
+                
+                data.forEach(d => {
+                    const logConc = Math.log10(d.concentration);
+                    const predicted = a + b * logConc;
+                    ssTot += Math.pow(d.probit - meanProbit, 2);
+                    ssRes += Math.pow(d.probit - predicted, 2);
+                });
+                
+                const r2 = 1 - (ssRes / ssTot);
+                
+                // 簡化的卡方檢驗
+                let chiSquare = 0;
+                data.forEach(d => {
+                    const logConc = Math.log10(d.concentration);
+                    const predictedProbit = a + b * logConc;
+                    const predictedP = normalCDF(predictedProbit - 5);
+                    const expected = predictedP * d.total;
+                    if (expected > 0) {
+                        chiSquare += Math.pow(d.dead - expected, 2) / expected;
+                    }
+                });
+                
+                const df = n - 2;
+                const pValue = 1 - chiSquareCDF(chiSquare, df); // 簡化計算
+                
+                return { r2, chiSquare, pValue };
+            }
+
+            // 標準正態累積分佈函數
+            function normalCDF(x) {
+                return 0.5 * (1 + erf(x / Math.sqrt(2)));
+            }
+
+            // 誤差函數的近似
+            function erf(x) {
+                const a1 =  0.254829592;
+                const a2 = -0.284496736;
+                const a3 =  1.421413741;
+                const a4 = -1.453152027;
+                const a5 =  1.061405429;
+                const p  =  0.3275911;
+                
+                const sign = x < 0 ? -1 : 1;
+                x = Math.abs(x);
+                
+                const t = 1.0 / (1.0 + p * x);
+                const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+                
+                return sign * y;
+            }
+
+            // 簡化的卡方累積分佈函數
+            function chiSquareCDF(x, df) {
+                if (x <= 0) return 0;
+                if (df === 1) return 2 * normalCDF(Math.sqrt(x)) - 1;
+                if (df === 2) return 1 - Math.exp(-x / 2);
+                // 對於其他自由度，使用近似
+                const mean = df;
+                const variance = 2 * df;
+                const normalized = (x - mean) / Math.sqrt(variance);
+                return normalCDF(normalized);
+            }
+
+            // 顯示結果
+            function displayResults(results, groupNum) {
+                const unit = unitSelect.value === 'custom' ? customUnitInput.value : unitSelect.value;
+                
+                document.getElementById(`lc50-result-${groupNum}`).textContent = 
+                    `${results.lc50.toFixed(3)} ${unit}`;
+                document.getElementById(`lc50-ci-${groupNum}`).textContent = 
+                    `95% CI: ${results.ci50[0].toFixed(3)} - ${results.ci50[1].toFixed(3)} ${unit}`;
+                document.getElementById(`lc75-result-${groupNum}`).textContent = 
+                    `${results.lc75.toFixed(3)} ${unit}`;
+                document.getElementById(`lc90-result-${groupNum}`).textContent = 
+                    `${results.lc90.toFixed(3)} ${unit}`;
+                document.getElementById(`slope-result-${groupNum}`).textContent = 
+                    `${results.slope.toFixed(3)} (R² = ${results.r2.toFixed(3)})`;
+            }
+
+            // 創建圖表數據集
+            function createChartDatasets(data, results, groupNum) {
+                const colors = {
+                    1: { point: 'rgba(102, 126, 234, 0.8)', line: '#667eea' },
+                    2: { point: 'rgba(17, 153, 142, 0.8)', line: '#11998e' }
+                };
+                
+                return [
+                    {
+                        label: `實驗數據點 (第${groupNum}組)`,
+                        data: data.map(d => ({ x: d.concentration, y: d.mortality * 100 })),
+                        backgroundColor: colors[groupNum].point,
+                        pointRadius: 8,
+                        pointHoverRadius: 10,
+                        pointBorderWidth: 2,
+                        pointBorderColor: 'white'
+                    },
+                    {
+                        label: `Probit 回歸線 (第${groupNum}組)`,
+                        data: generateLineData(results),
+                        type: 'line',
+                        borderColor: colors[groupNum].line,
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.4,
+                        showLine: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 0
+                    }
+                ];
+            }
+
+            // 生成回歸線數據點
+            function generateLineData(results) {
+                const lineDataPoints = [];
+                for (let i = 1; i <= 99; i++) {
+                    const p = i / 100;
+                    const probitValue = probit(p);
+                    const logC = (probitValue - results.intercept) / results.slope;
+                    const concentration = Math.pow(10, logC);
+                    
+                    // 只包含合理範圍內的點
+                    if (concentration > 0 && concentration < 1e6) {
+                        lineDataPoints.push({ x: concentration, y: i });
+                    }
+                }
+                return lineDataPoints;
+            }
+
+            // 繪製圖表
+            function renderChart(datasets) {
+                const ctx = document.getElementById('probit-chart').getContext('2d');
+                if (probitChart) {
+                    probitChart.destroy();
+                }
+
+                const unit = unitSelect.value === 'custom' ? customUnitInput.value : unitSelect.value;
+
+                probitChart = new Chart(ctx, {
+                    type: 'scatter',
+                    data: { datasets: datasets },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Probit 分析圖',
+                                font: { size: 16, weight: 'bold' }
+                            },
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.dataset.label.includes('實驗數據點')) {
+                                            return `${context.dataset.label}\n濃度: ${context.raw.x.toFixed(3)} ${unit}\n死亡率: ${context.raw.y.toFixed(1)}%`;
+                                        }
+                                        return context.dataset.label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'logarithmic',
+                                title: {
+                                    display: true,
+                                    text: `濃度 (${unit})`,
+                                    font: { size: 14, weight: 'bold' }
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return Number(value.toFixed(3));
+                                    }
+                                },
+                                grid: { color: 'rgba(0, 0, 0, 0.1)' }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: '死亡率 (%)',
+                                    font: { size: 14, weight: 'bold' }
+                                },
+                                min: 0,
+                                max: 100,
+                                ticks: {
+                                    stepSize: 10
+                                },
+                                grid: { color: 'rgba(0, 0, 0, 0.1)' }
+                            }
+                        },
+                        elements: {
+                            point: {
+                                hoverBackgroundColor: 'rgba(255, 255, 255, 0.8)'
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 匯出 PDF 報告
+            exportPdfBtn.addEventListener('click', () => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // 標題
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(20);
+                doc.text('LC50/LC75/LC90 分析報告', 105, 20, { align: 'center' });
+                
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(12);
+                doc.text(`生成時間: ${new Date().toLocaleString('zh-TW')}`, 105, 30, { align: 'center' });
+
+                let yPosition = 50;
+                
+                // 第一組數據
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(14);
+                doc.text('第一組實驗數據', 20, yPosition);
+                yPosition += 10;
+                
+                // 表格數據
+                const tableData1 = [['濃度', '總數', '死亡數', '死亡率(%)']];
+                dataTable1.querySelectorAll('tbody tr').forEach(row => {
+                    const concentration = row.querySelector('.concentration').value;
+                    const total = row.querySelector('.total').value;
+                    const dead = row.querySelector('.dead').value;
+                    if (concentration && total && dead) {
+                        const mortality = ((dead / total) * 100).toFixed(1);
+                        tableData1.push([concentration, total, dead, mortality]);
+                    }
+                });
+                
+                if (tableData1.length > 1) {
+                    doc.autoTable({
+                        startY: yPosition,
+                        head: [tableData1[0]],
+                        body: tableData1.slice(1),
+                        styles: { fontSize: 10 },
+                        headStyles: { fillColor: [102, 126, 234] },
+                        margin: { left: 20, right: 20 }
+                    });
+                    yPosition = doc.lastAutoTable.finalY + 15;
+                }
+                
+                // 計算結果
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(14);
+                doc.text('計算結果', 20, yPosition);
+                yPosition += 10;
+                
+                const unit = unitSelect.value === 'custom' ? customUnitInput.value : unitSelect.value;
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(11);
+                doc.text(`LC50: ${document.getElementById('lc50-result-1').textContent}`, 25, yPosition);
+                yPosition += 8;
+                doc.text(`${document.getElementById('lc50-ci-1').textContent}`, 25, yPosition);
+                yPosition += 8;
+                doc.text(`LC75: ${document.getElementById('lc75-result-1').textContent}`, 25, yPosition);
+                yPosition += 8;
+                doc.text(`LC90: ${document.getElementById('lc90-result-1').textContent}`, 25, yPosition);
+                yPosition += 8;
+                doc.text(`回歸線斜率: ${document.getElementById('slope-result-1').textContent}`, 25, yPosition);
+                yPosition += 15;
+                
+                // 統計驗證信息
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(12);
+                doc.text('統計驗證', 20, yPosition);
+                yPosition += 8;
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                const validationText = validationDetails.innerHTML.replace(/<br>/g, '\n').replace(/<[^>]*>/g, '');
+                const splitText = doc.splitTextToSize(validationText, 170);
+                doc.text(splitText, 20, yPosition);
+                yPosition += splitText.length * 5 + 10;
+                
+                // 添加圖表
+                if (yPosition > 220) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(12);
+                doc.text('Probit 分析圖', 20, yPosition);
+                
+                // 使用 html2canvas 轉換圖表
+                html2canvas(document.getElementById('probit-chart')).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const imgWidth = 170;
+                    const imgHeight = canvas.height * imgWidth / canvas.width;
+                    
+                    if (yPosition + imgHeight > 280) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    doc.addImage(imgData, 'PNG', 20, yPosition + 10, imgWidth, imgHeight);
+                    doc.save('LC50_Analysis_Report_Improved.pdf');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
