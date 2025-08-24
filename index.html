@@ -16,7 +16,7 @@
         }
 
         .container {
-            max-width: 1000px; /* 增加寬度以容納更多內容 */
+            max-width: 1000px;
             margin: 20px auto;
             background-color: #fff;
             padding: 30px;
@@ -297,7 +297,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.3/jstat.min.js"></script>
 
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const unitSelect = document.getElementById('unit-select');
@@ -399,7 +398,10 @@
                     lc50Result1.innerText = `${probitResults1.lc50.toFixed(2)} ${finalUnit}`;
                     lc50CI1.innerText = `95% CI: ${probitResults1.cI50[0].toFixed(2)} - ${probitResults1.cI50[1].toFixed(2)} ${finalUnit}`;
                     slopeResult1.innerText = `${probitResults1.b.toFixed(2)}`;
-                    chiSquareTest1.innerText = `χ²: ${probitResults1.chiSquare.toFixed(2)} (p-value: ${probitResults1.pValue.toFixed(3)})`;
+                    
+                    let pValueText1 = probitResults1.pValue >= 0.05 ? `<span style="color: #2ecc71;">P > 0.05 (擬合良好)</span>` : `<span style="color: #e74c3c;">P < 0.05 (擬合不良)</span>`;
+                    chiSquareTest1.innerHTML = `χ²: ${probitResults1.chiSquare.toFixed(2)} (p-value: ${probitResults1.pValue.toFixed(3)}) ${pValueText1}`;
+                    
 
                     let datasets = [];
                     datasets.push({
@@ -426,7 +428,9 @@
                         lc50Result2.innerText = `${probitResults2.lc50.toFixed(2)} ${finalUnit}`;
                         lc50CI2.innerText = `95% CI: ${probitResults2.cI50[0].toFixed(2)} - ${probitResults2.cI50[1].toFixed(2)} ${finalUnit}`;
                         slopeResult2.innerText = `${probitResults2.b.toFixed(2)}`;
-                        chiSquareTest2.innerText = `χ²: ${probitResults2.chiSquare.toFixed(2)} (p-value: ${probitResults2.pValue.toFixed(3)})`;
+
+                        let pValueText2 = probitResults2.pValue >= 0.05 ? `<span style="color: #2ecc71;">P > 0.05 (擬合良好)</span>` : `<span style="color: #e74c3c;">P < 0.05 (擬合不良)</span>`;
+                        chiSquareTest2.innerHTML = `χ²: ${probitResults2.chiSquare.toFixed(2)} (p-value: ${probitResults2.pValue.toFixed(3)}) ${pValueText2}`;
 
                         datasets.push({
                             label: '實驗數據點 (第二組)',
@@ -527,15 +531,10 @@
 
                 // 計算 LC 值
                 const probit50 = 5;
-                const probit75 = 5.67; 
-                const probit90 = 6.28; 
-
                 const logLC50 = (probit50 - a) / b;
-                const logLC75 = (probit75 - a) / b;
-                const logLC90 = (probit90 - a) / b;
 
                 // 信賴區間的計算
-                const lcValues = [logLC50, logLC75, logLC90];
+                const lcValues = [logLC50, (5.67 - a) / b, (6.28 - a) / b];
                 const confidenceIntervals = [];
 
                 // 自由度 for 95% CI
@@ -563,28 +562,27 @@
                 // 卡方檢定
                 let chiSquare = 0;
                 data.forEach(d => {
-                    const observedProb = d.mortality;
-                    const expectedProb = 1 / (1 + Math.exp(-1 * (a + b * Math.log10(d.concentration)))); // Probit to Sigmoid conversion
+                    const logC = Math.log10(d.concentration);
+                    const expectedProbit = a + b * logC;
+                    const expectedProb = jstat.normal.cdf(expectedProbit - 5, 0, 1);
                     const expectedDead = expectedProb * d.total;
-                    const expectedAlive = (1 - expectedProb) * d.total;
-
-                    chiSquare += Math.pow(d.dead - expectedDead, 2) / expectedDead;
-                    chiSquare += Math.pow((d.total - d.dead) - expectedAlive, 2) / expectedAlive;
+                    
+                    chiSquare += Math.pow(d.dead - expectedDead, 2) / expectedDead + Math.pow((d.total - d.dead) - (d.total - expectedDead), 2) / (d.total - expectedDead);
                 });
                 
-                const pValue = 1 - jstat.chisquare.cdf(chiSquare, df);
+                const pValue = jstat.chisquare.cdf(chiSquare, df);
 
                 return {
                     lc50: Math.pow(10, logLC50),
                     cI50: confidenceIntervals[0],
-                    lc75: Math.pow(10, logLC75),
+                    lc75: Math.pow(10, lcValues[1]),
                     cI75: confidenceIntervals[1],
-                    lc90: Math.pow(10, logLC90),
+                    lc90: Math.pow(10, lcValues[2]),
                     cI90: confidenceIntervals[2],
                     a: a,
                     b: b,
                     chiSquare: chiSquare,
-                    pValue: pValue
+                    pValue: 1 - pValue // jstat.chisquare.cdf returns cumulative, so we need 1-cdf for p-value
                 };
             }
 
