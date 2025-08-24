@@ -159,6 +159,12 @@
             color: #e74c3c;
             font-size: 1.2em;
         }
+
+        .confidence-interval {
+            font-size: 0.9em;
+            color: #555;
+            margin-top: 5px;
+        }
         
         .chart-container {
             margin-top: 30px;
@@ -188,7 +194,7 @@
                 <input type="text" id="custom-unit-input" placeholder="輸入自訂單位" style="display: none;">
             </div>
             
-            <p class="data-table-description">請在下方表格輸入至少兩組不同濃度下的實驗數據。</p>
+            <p class="data-table-description">請輸入您的第一組實驗數據，並點擊「新增數據列」按鈕以輸入更多數據。為確保計算準確，建議至少輸入兩組數據。</p>
             <table id="data-table">
                 <thead>
                     <tr>
@@ -199,19 +205,9 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td><input type="number" class="concentration" value="10"></td>
-                        <td><input type="number" class="total" value="20"></td>
-                        <td><input type="number" class="dead" value="5"></td>
-                    </tr>
-                    <tr>
-                        <td><input type="number" class="concentration" value="20"></td>
-                        <td><input type="number" class="total" value="20"></td>
-                        <td><input type="number" class="dead" value="10"></td>
-                    </tr>
-                    <tr>
-                        <td><input type="number" class="concentration" value="30"></td>
-                        <td><input type="number" class="total" value="20"></td>
-                        <td><input type="number" class="dead" value="15"></td>
+                        <td><input type="number" class="concentration"></td>
+                        <td><input type="number" class="total"></td>
+                        <td><input type="number" class="dead"></td>
                     </tr>
                 </tbody>
             </table>
@@ -222,14 +218,18 @@
 
         <div class="actions">
             <button id="calculate-btn" class="button accent-button">計算 LC 值</button>
+            <button id="export-pdf-btn" class="button secondary-button" style="display: none;">匯出報告</button>
         </div>
 
         <div class="results-section" id="results-section" style="display: none;">
             <div class="results-info">
                 <h3>計算結果</h3>
                 <p>LC50: <span id="lc50-result" class="result-value">--</span></p>
+                <p class="confidence-interval" id="lc50-ci">--</p>
                 <p>LC75: <span id="lc75-result" class="result-value">--</span></p>
+                <p class="confidence-interval" id="lc75-ci">--</p>
                 <p>LC90: <span id="lc90-result" class="result-value">--</span></p>
+                <p class="confidence-interval" id="lc90-ci">--</p>
             </div>
             
             <div class="chart-container">
@@ -239,6 +239,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <script>
         // JavaScript 邏輯 - 數據處理與計算
@@ -248,10 +250,14 @@
             const dataTableBody = document.querySelector('#data-table tbody');
             const addRowBtn = document.getElementById('add-row-btn');
             const calculateBtn = document.getElementById('calculate-btn');
+            const exportPdfBtn = document.getElementById('export-pdf-btn');
             const resultsSection = document.getElementById('results-section');
             const lc50Result = document.getElementById('lc50-result');
             const lc75Result = document.getElementById('lc75-result');
             const lc90Result = document.getElementById('lc90-result');
+            const lc50CI = document.getElementById('lc50-ci');
+            const lc75CI = document.getElementById('lc75-ci');
+            const lc90CI = document.getElementById('lc90-ci');
 
             let probitChart;
 
@@ -268,9 +274,9 @@
             addRowBtn.addEventListener('click', () => {
                 const newRow = dataTableBody.insertRow();
                 newRow.innerHTML = `
-                    <td><input type="number" class="concentration" required></td>
-                    <td><input type="number" class="total" required></td>
-                    <td><input type="number" class="dead" required></td>
+                    <td><input type="number" class="concentration"></td>
+                    <td><input type="number" class="total"></td>
+                    <td><input type="number" class="dead"></td>
                 `;
             });
 
@@ -301,7 +307,7 @@
                 });
 
                 if (data.length < 2) {
-                    alert('請至少輸入兩組有效的數據以進行計算。');
+                    alert('為確保計算準確，請至少輸入兩組有效的數據。');
                     return;
                 }
 
@@ -313,8 +319,13 @@
                     lc50Result.innerText = `${probitResults.lc50.toFixed(2)} ${finalUnit}`;
                     lc75Result.innerText = `${probitResults.lc75.toFixed(2)} ${finalUnit}`;
                     lc90Result.innerText = `${probitResults.lc90.toFixed(2)} ${finalUnit}`;
+
+                    lc50CI.innerText = `95% CI: ${probitResults.lc50ci[0].toFixed(2)} - ${probitResults.lc50ci[1].toFixed(2)} ${finalUnit}`;
+                    lc75CI.innerText = `95% CI: ${probitResults.lc75ci[0].toFixed(2)} - ${probitResults.lc75ci[1].toFixed(2)} ${finalUnit}`;
+                    lc90CI.innerText = `95% CI: ${probitResults.lc90ci[0].toFixed(2)} - ${probitResults.lc90ci[1].toFixed(2)} ${finalUnit}`;
                     
                     resultsSection.style.display = 'block';
+                    exportPdfBtn.style.display = 'inline-block';
 
                     // 繪製圖表
                     renderChart(data, probitResults);
@@ -328,15 +339,12 @@
             function probit(p) {
                 if (p === 0) return -4; // 處理 0% 死亡率的邊界值
                 if (p === 1) return 4;  // 處理 100% 死亡率的邊界值
-
-                // 使用正態分佈的逆累積分佈函數（通常需要一個函式庫）
-                // 這裡使用一個簡化的近似值，足夠大多數情況使用
                 let z = Math.sqrt(-2 * Math.log(p > 0.5 ? 1 - p : p));
                 if (p < 0.5) z = -z;
                 return 5 + z;
             }
 
-            // Probit 回歸計算
+            // Probit 回歸與信賴區間計算
             function calculateProbit(data) {
                 const n = data.length;
                 let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
@@ -352,23 +360,55 @@
                 const a = (sumY * sumX2 - sumX * sumXY) / (n * sumX2 - sumX * sumX);
                 const b = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
                 
+                if (b <= 0) {
+                    throw new Error('回歸斜率為負或為零，數據不適用 Probit 分析。請檢查濃度與死亡率的關係。');
+                }
+
                 // 計算 LC 值
                 const probit50 = 5;
-                const probit75 = 5.67; // Probit(0.75) ≈ 5.67
-                const probit90 = 6.28; // Probit(0.90) ≈ 6.28
+                const probit75 = 5.67; 
+                const probit90 = 6.28; 
 
                 const logLC50 = (probit50 - a) / b;
                 const logLC75 = (probit75 - a) / b;
                 const logLC90 = (probit90 - a) / b;
 
-                if (b <= 0) {
-                    throw new Error('回歸斜率為負或為零，數據不適用 Probit 分析。請檢查濃度與死亡率的關係。');
+                // 信賴區間的計算需要更複雜的統計量
+                const lcValues = [logLC50, logLC75, logLC90];
+                const probitLevels = [probit50, probit75, probit90];
+                const confidenceIntervals = [];
+
+                // 自由度 for 95% CI
+                const df = n - 2;
+                const tValue = 2.447; // t-distribution critical value for df=3, 95% CI
+
+                // 計算殘差和
+                let sumOfSquaredResiduals = 0;
+                data.forEach(d => {
+                    const expectedProbit = a + b * Math.log10(d.concentration);
+                    sumOfSquaredResiduals += Math.pow(d.probit - expectedProbit, 2);
+                });
+                const seYx = Math.sqrt(sumOfSquaredResiduals / df);
+                const meanX = sumX / n;
+
+                for (let i = 0; i < lcValues.length; i++) {
+                    const logLC = lcValues[i];
+                    const probitLevel = probitLevels[i];
+                    
+                    const seLogC = Math.sqrt((seYx * seYx) / (b * b * (sumX2 - sumX * sumX / n)) * (1 + (1/n) + Math.pow(logLC - meanX, 2) / (sumX2 - sumX * sumX / n)));
+                    
+                    const lowerBound = Math.pow(10, logLC - tValue * seLogC);
+                    const upperBound = Math.pow(10, logLC + tValue * seLogC);
+                    confidenceIntervals.push([lowerBound, upperBound]);
                 }
 
                 return {
                     lc50: Math.pow(10, logLC50),
+                    cI50: confidenceIntervals[0],
                     lc75: Math.pow(10, logLC75),
+                    cI75: confidenceIntervals[1],
                     lc90: Math.pow(10, logLC90),
+                    cI90: confidenceIntervals[2],
                     a: a,
                     b: b
                 };
@@ -381,18 +421,14 @@
                     probitChart.destroy();
                 }
 
-                const concentrations = data.map(d => d.concentration);
-                const logConcentrations = data.map(d => Math.log10(d.concentration));
-                const probitValues = data.map(d => d.probit);
-
-                const minLogC = Math.min(...logConcentrations);
-                const maxLogC = Math.max(...logConcentrations);
                 const lineDataPoints = [];
                 for (let i = 0; i <= 100; i++) {
                     const p = i / 100;
                     const probitValue = probit(p);
                     const logC = (probitValue - probitResults.a) / probitResults.b;
-                    lineDataPoints.push({ x: Math.pow(10, logC), y: i });
+                    if (!isNaN(logC)) {
+                        lineDataPoints.push({ x: Math.pow(10, logC), y: i });
+                    }
                 }
 
                 probitChart = new Chart(ctx, {
@@ -455,6 +491,76 @@
                     }
                 });
             }
+
+            // 匯出 PDF 報告
+            exportPdfBtn.addEventListener('click', () => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                doc.setFont('Helvetica', 'bold');
+                doc.setFontSize(22);
+                doc.text('LC50/LC75/LC90 分析報告', 105, 20, { align: 'center' });
+
+                doc.setFontSize(16);
+                doc.text('實驗數據', 20, 40);
+                
+                // 獲取數據表格內容
+                let tableData = [
+                    ['濃度 (C)', '總數 (N)', '死亡數 (D)']
+                ];
+                const rows = dataTableBody.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const concentration = row.querySelector('.concentration').value;
+                    const total = row.querySelector('.total').value;
+                    const dead = row.querySelector('.dead').value;
+                    tableData.push([concentration, total, dead]);
+                });
+
+                doc.autoTable({
+                    startY: 45,
+                    head: [tableData[0]],
+                    body: tableData.slice(1),
+                    styles: {
+                        fontSize: 10,
+                        cellPadding: 3
+                    },
+                    headStyles: {
+                        fillColor: [44, 62, 80]
+                    },
+                    margin: { top: 40, left: 20, right: 20 }
+                });
+
+                const finalY = doc.autoTable.previous.finalY;
+
+                doc.setFontSize(16);
+                doc.text('計算結果', 20, finalY + 15);
+                
+                const unit = unitSelect.value === 'custom' ? customUnitInput.value : unitSelect.value;
+                const lc50 = lc50Result.innerText;
+                const lc75 = lc75Result.innerText;
+                const lc90 = lc90Result.innerText;
+                const lc50ci = lc50CI.innerText;
+                const lc75ci = lc75CI.innerText;
+                const lc90ci = lc90CI.innerText;
+
+                doc.setFontSize(12);
+                doc.text(`LC50: ${lc50}`, 25, finalY + 25);
+                doc.text(lc50ci, 25, finalY + 32);
+                doc.text(`LC75: ${lc75}`, 25, finalY + 42);
+                doc.text(lc75ci, 25, finalY + 49);
+                doc.text(`LC90: ${lc90}`, 25, finalY + 59);
+                doc.text(lc90ci, 25, finalY + 66);
+
+                // 截圖圖表並加入到 PDF
+                doc.text('Probit 回歸圖', 20, finalY + 80);
+                html2canvas(document.getElementById('probit-chart')).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const imgWidth = 170;
+                    const imgHeight = canvas.height * imgWidth / canvas.width;
+                    doc.addImage(imgData, 'PNG', 20, finalY + 85, imgWidth, imgHeight);
+                    doc.save('LC50_Analysis_Report.pdf');
+                });
+            });
         });
     </script>
 </body>
