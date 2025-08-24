@@ -245,7 +245,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 
     <script>
-        // JavaScript 邏輯 - 數據處理與計算
         document.addEventListener('DOMContentLoaded', () => {
             const unitSelect = document.getElementById('unit-select');
             const customUnitInput = document.getElementById('custom-unit-input');
@@ -265,114 +264,106 @@
             let probitChart;
 
             // 處理自訂單位輸入框的顯示
-            if (unitSelect && customUnitInput) {
-                unitSelect.addEventListener('change', () => {
-                    if (unitSelect.value === 'custom') {
-                        customUnitInput.style.display = 'inline-block';
-                    } else {
-                        customUnitInput.style.display = 'none';
-                    }
-                });
-            }
+            unitSelect.addEventListener('change', () => {
+                if (unitSelect.value === 'custom') {
+                    customUnitInput.style.display = 'inline-block';
+                } else {
+                    customUnitInput.style.display = 'none';
+                }
+            });
 
             // 新增數據列
-            if (addRowBtn && dataTableBody) {
-                addRowBtn.addEventListener('click', () => {
-                    const newRow = dataTableBody.insertRow();
-                    newRow.innerHTML = `
+            addRowBtn.addEventListener('click', () => {
+                const newRow = dataTableBody.insertRow();
+                newRow.innerHTML = `
+                    <td><input type="number" class="concentration"></td>
+                    <td><input type="number" class="total"></td>
+                    <td><input type="number" class="dead"></td>
+                `;
+            });
+
+            // 重設按鈕功能
+            resetBtn.addEventListener('click', () => {
+                const initialRows = `
+                    <tr>
                         <td><input type="number" class="concentration"></td>
                         <td><input type="number" class="total"></td>
                         <td><input type="number" class="dead"></td>
-                    `;
-                });
-            }
-
-            // 重設按鈕功能
-            if (resetBtn && dataTableBody && resultsSection && exportPdfBtn) {
-                resetBtn.addEventListener('click', () => {
-                    const initialRows = `
-                        <tr>
-                            <td><input type="number" class="concentration"></td>
-                            <td><input type="number" class="total"></td>
-                            <td><input type="number" class="dead"></td>
-                        </tr>
-                    `;
-                    dataTableBody.innerHTML = initialRows;
-                    resultsSection.style.display = 'none';
-                    exportPdfBtn.style.display = 'none';
-                    if (probitChart) {
-                        probitChart.destroy();
-                    }
-                });
-            }
+                    </tr>
+                `;
+                dataTableBody.innerHTML = initialRows;
+                resultsSection.style.display = 'none';
+                exportPdfBtn.style.display = 'none';
+                if (probitChart) {
+                    probitChart.destroy();
+                }
+            });
 
             // 主要計算功能
-            if (calculateBtn && dataTableBody) {
-                calculateBtn.addEventListener('click', () => {
-                    const rows = dataTableBody.querySelectorAll('tr');
-                    let data = [];
-                    let hasInvalidData = false;
+            calculateBtn.addEventListener('click', () => {
+                const rows = dataTableBody.querySelectorAll('tr');
+                let data = [];
+                let hasInvalidData = false;
 
-                    rows.forEach(row => {
-                        const concentrationInput = row.querySelector('.concentration');
-                        const totalInput = row.querySelector('.total');
-                        const deadInput = row.querySelector('.dead');
-                        
-                        const concentration = parseFloat(concentrationInput.value);
-                        const total = parseInt(totalInput.value);
-                        const dead = parseInt(deadInput.value);
+                rows.forEach(row => {
+                    const concentrationInput = row.querySelector('.concentration');
+                    const totalInput = row.querySelector('.total');
+                    const deadInput = row.querySelector('.dead');
+                    
+                    const concentration = parseFloat(concentrationInput.value);
+                    const total = parseInt(totalInput.value);
+                    const dead = parseInt(deadInput.value);
 
-                        // 驗證數據
-                        if (!isNaN(concentration) && !isNaN(total) && !isNaN(dead) && total > 0) {
-                            if (dead <= total) {
-                                data.push({
-                                    concentration: concentration,
-                                    total: total,
-                                    dead: dead,
-                                    mortality: dead / total,
-                                    probit: probit(dead / total)
-                                });
-                            } else {
-                                alert('死亡數不能大於總數！請檢查您的數據。');
-                                hasInvalidData = true;
-                                return;
-                            }
+                    // 驗證數據
+                    if (!isNaN(concentration) && !isNaN(total) && !isNaN(dead) && total > 0) {
+                        if (dead <= total) {
+                            data.push({
+                                concentration: concentration,
+                                total: total,
+                                dead: dead,
+                                mortality: dead / total,
+                                probit: probit(dead / total)
+                            });
+                        } else {
+                            alert('死亡數不能大於總數！請檢查您的數據。');
+                            hasInvalidData = true;
+                            return;
                         }
-                    });
-
-                    if (hasInvalidData) {
-                        return;
-                    }
-
-                    if (data.length < 3) {
-                        alert('為確保計算準確，特別是信賴區間，請至少輸入三組有效的數據。');
-                        return;
-                    }
-
-                    // Probit 分析計算
-                    try {
-                        const probitResults = calculateProbit(data);
-                        const finalUnit = unitSelect.value === 'custom' ? customUnitInput.value : unitSelect.value;
-                        
-                        lc50Result.innerText = `${probitResults.lc50.toFixed(2)} ${finalUnit}`;
-                        lc75Result.innerText = `${probitResults.lc75.toFixed(2)} ${finalUnit}`;
-                        lc90Result.innerText = `${probitResults.lc90.toFixed(2)} ${finalUnit}`;
-
-                        lc50CI.innerText = `95% CI: ${probitResults.cI50[0].toFixed(2)} - ${probitResults.cI50[1].toFixed(2)} ${finalUnit}`;
-                        lc75CI.innerText = `95% CI: ${probitResults.cI75[0].toFixed(2)} - ${probitResults.cI75[1].toFixed(2)} ${finalUnit}`;
-                        lc90CI.innerText = `95% CI: ${probitResults.cI90[0].toFixed(2)} - ${probitResults.cI90[1].toFixed(2)} ${finalUnit}`;
-                        
-                        resultsSection.style.display = 'block';
-                        exportPdfBtn.style.display = 'inline-block';
-
-                        // 繪製圖表
-                        renderChart(data, probitResults);
-
-                    } catch (e) {
-                        alert(e.message);
                     }
                 });
-            }
+
+                if (hasInvalidData) {
+                    return;
+                }
+
+                if (data.length < 3) {
+                    alert('為確保計算準確，特別是信賴區間，請至少輸入三組有效的數據。');
+                    return;
+                }
+
+                // Probit 分析計算
+                try {
+                    const probitResults = calculateProbit(data);
+                    const finalUnit = unitSelect.value === 'custom' ? customUnitInput.value : unitSelect.value;
+                    
+                    lc50Result.innerText = `${probitResults.lc50.toFixed(2)} ${finalUnit}`;
+                    lc75Result.innerText = `${probitResults.lc75.toFixed(2)} ${finalUnit}`;
+                    lc90Result.innerText = `${probitResults.lc90.toFixed(2)} ${finalUnit}`;
+
+                    lc50CI.innerText = `95% CI: ${probitResults.cI50[0].toFixed(2)} - ${probitResults.cI50[1].toFixed(2)} ${finalUnit}`;
+                    lc75CI.innerText = `95% CI: ${probitResults.cI75[0].toFixed(2)} - ${probitResults.cI75[1].toFixed(2)} ${finalUnit}`;
+                    lc90CI.innerText = `95% CI: ${probitResults.cI90[0].toFixed(2)} - ${probitResults.cI90[1].toFixed(2)} ${finalUnit}`;
+                    
+                    resultsSection.style.display = 'block';
+                    exportPdfBtn.style.display = 'inline-block';
+
+                    // 繪製圖表
+                    renderChart(data, probitResults);
+
+                } catch (e) {
+                    alert(e.message);
+                }
+            });
 
             // Probit 單位函數
             function probit(p) {
@@ -529,76 +520,74 @@
             }
 
             // 匯出 PDF 報告
-            if (exportPdfBtn) {
-                exportPdfBtn.addEventListener('click', () => {
-                    const { jsPDF } = window.jspdf;
-                    const doc = new jsPDF();
-                    
-                    doc.setFont('Helvetica', 'bold');
-                    doc.setFontSize(22);
-                    doc.text('LC50/LC75/LC90 分析報告', 105, 20, { align: 'center' });
+            exportPdfBtn.addEventListener('click', () => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                doc.setFont('Helvetica', 'bold');
+                doc.setFontSize(22);
+                doc.text('LC50/LC75/LC90 分析報告', 105, 20, { align: 'center' });
 
-                    doc.setFontSize(16);
-                    doc.text('實驗數據', 20, 40);
-                    
-                    // 獲取數據表格內容
-                    let tableData = [
-                        ['濃度 (C)', '總數 (N)', '死亡數 (D)']
-                    ];
-                    const rows = dataTableBody.querySelectorAll('tr');
-                    rows.forEach(row => {
-                        const concentration = row.querySelector('.concentration').value;
-                        const total = row.querySelector('.total').value;
-                        const dead = row.querySelector('.dead').value;
-                        tableData.push([concentration, total, dead]);
-                    });
-
-                    doc.autoTable({
-                        startY: 45,
-                        head: [tableData[0]],
-                        body: tableData.slice(1),
-                        styles: {
-                            fontSize: 10,
-                            cellPadding: 3
-                        },
-                        headStyles: {
-                            fillColor: [44, 62, 80]
-                        },
-                        margin: { top: 40, left: 20, right: 20 }
-                    });
-
-                    const finalY = doc.autoTable.previous.finalY;
-
-                    doc.setFontSize(16);
-                    doc.text('計算結果', 20, finalY + 15);
-                    
-                    const unit = unitSelect.value === 'custom' ? customUnitInput.value : unitSelect.value;
-                    const lc50 = lc50Result.innerText;
-                    const lc75 = lc75Result.innerText;
-                    const lc90 = lc90Result.innerText;
-                    const lc50ci = lc50CI.innerText;
-                    const lc75ci = lc75CI.innerText;
-                    const lc90ci = lc90CI.innerText;
-
-                    doc.setFontSize(12);
-                    doc.text(`LC50: ${lc50}`, 25, finalY + 25);
-                    doc.text(lc50ci, 25, finalY + 32);
-                    doc.text(`LC75: ${lc75}`, 25, finalY + 42);
-                    doc.text(lc75ci, 25, finalY + 49);
-                    doc.text(`LC90: ${lc90}`, 25, finalY + 59);
-                    doc.text(lc90ci, 25, finalY + 66);
-
-                    // 截圖圖表並加入到 PDF
-                    doc.text('Probit 回歸圖', 20, finalY + 80);
-                    html2canvas(document.getElementById('probit-chart')).then(canvas => {
-                        const imgData = canvas.toDataURL('image/png');
-                        const imgWidth = 170;
-                        const imgHeight = canvas.height * imgWidth / canvas.width;
-                        doc.addImage(imgData, 'PNG', 20, finalY + 85, imgWidth, imgHeight);
-                        doc.save('LC50_Analysis_Report.pdf');
-                    });
+                doc.setFontSize(16);
+                doc.text('實驗數據', 20, 40);
+                
+                // 獲取數據表格內容
+                let tableData = [
+                    ['濃度 (C)', '總數 (N)', '死亡數 (D)']
+                ];
+                const rows = dataTableBody.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const concentration = row.querySelector('.concentration').value;
+                    const total = row.querySelector('.total').value;
+                    const dead = row.querySelector('.dead').value;
+                    tableData.push([concentration, total, dead]);
                 });
-            }
+
+                doc.autoTable({
+                    startY: 45,
+                    head: [tableData[0]],
+                    body: tableData.slice(1),
+                    styles: {
+                        fontSize: 10,
+                        cellPadding: 3
+                    },
+                    headStyles: {
+                        fillColor: [44, 62, 80]
+                    },
+                    margin: { top: 40, left: 20, right: 20 }
+                });
+
+                const finalY = doc.autoTable.previous.finalY;
+
+                doc.setFontSize(16);
+                doc.text('計算結果', 20, finalY + 15);
+                
+                const unit = unitSelect.value === 'custom' ? customUnitInput.value : unitSelect.value;
+                const lc50 = lc50Result.innerText;
+                const lc75 = lc75Result.innerText;
+                const lc90 = lc90Result.innerText;
+                const lc50ci = lc50CI.innerText;
+                const lc75ci = lc75CI.innerText;
+                const lc90ci = lc90CI.innerText;
+
+                doc.setFontSize(12);
+                doc.text(`LC50: ${lc50}`, 25, finalY + 25);
+                doc.text(lc50ci, 25, finalY + 32);
+                doc.text(`LC75: ${lc75}`, 25, finalY + 42);
+                doc.text(lc75ci, 25, finalY + 49);
+                doc.text(`LC90: ${lc90}`, 25, finalY + 59);
+                doc.text(lc90ci, 25, finalY + 66);
+
+                // 截圖圖表並加入到 PDF
+                doc.text('Probit 回歸圖', 20, finalY + 80);
+                html2canvas(document.getElementById('probit-chart')).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const imgWidth = 170;
+                    const imgHeight = canvas.height * imgWidth / canvas.width;
+                    doc.addImage(imgData, 'PNG', 20, finalY + 85, imgWidth, imgHeight);
+                    doc.save('LC50_Analysis_Report.pdf');
+                });
+            });
         });
     </script>
 </body>
