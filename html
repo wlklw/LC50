@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LC50, LC75, LC90 計算工具</title>
+    <style>
+        /* 這裡可以放網頁的美編樣式，讓介面更美觀 */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        h2 {
+            text-align: center;
+        }
+        /* ... 其他 CSS 樣式 ... */
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>LC 計算器</h2>
+        <p>請輸入您的實驗數據：</p>
+
+        <div id="data-input-form">
+            <div class="data-row">
+                <label>濃度 (mg/L): <input type="number" class="concentration"></label>
+                <label>生物總數: <input type="number" class="total"></label>
+                <label>死亡數: <input type="number" class="dead"></label>
+            </div>
+            <button id="add-row-btn">新增數據</button>
+        </div>
+
+        <hr>
+
+        <button id="calculate-btn">開始計算</button>
+
+        <div id="results">
+            <h3>計算結果</h3>
+            <p>LC50: <span id="lc50-result">--</span></p>
+            <p>LC75: <span id="lc75-result">--</span></p>
+            <p>LC90: <span id="lc90-result">--</span></p>
+        </div>
+    </div>
+
+    <script>
+        // 這裡就是我將為您撰寫的 JavaScript 程式碼，
+        // 用來處理 Probit Analysis 的計算邏輯，
+        // 並將結果顯示在 #results 區塊。
+        document.getElementById('calculate-btn').addEventListener('click', function() {
+            // 這裡會呼叫計算函數
+            // calculateLCValues();
+            // 這裡只是個示範，會用真實數據替換
+            document.getElementById('lc50-result').innerText = '123.45 mg/L';
+            document.getElementById('lc75-result').innerText = '180.25 mg/L';
+            document.getElementById('lc90-result').innerText = '250.70 mg/L';
+        });
+    </script>
+
+</body>
+</html>
