@@ -274,14 +274,12 @@
                     <p>LC50: <span id="lc50-result-1" class="result-value">--</span></p>
                     <p class="confidence-interval" id="lc50-ci-1">--</p>
                     <p>回歸線斜率 (b): <span id="slope-result-1" class="result-value">--</span></p>
-                    <p>卡方檢定: <span id="chi-square-test-1">--</span></p>
                 </div>
                 <div id="results-group-2" style="display:none;">
                     <h4>第二組數據</h4>
                     <p>LC50: <span id="lc50-result-2" class="result-value">--</span></p>
                     <p class="confidence-interval" id="lc50-ci-2">--</p>
                     <p>回歸線斜率 (b): <span id="slope-result-2" class="result-value">--</span></p>
-                    <p>卡方檢定: <span id="chi-square-test-2">--</span></p>
                 </div>
             </div>
             
@@ -291,124 +289,4 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.3/jstat.min.js"></script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const unitSelect = document.getElementById('unit-select');
-            const customUnitInput = document.getElementById('custom-unit-input');
-            const dataTable1 = document.getElementById('data-table-1');
-            const dataTable2 = document.getElementById('data-table-2');
-            const addRowBtn1 = document.getElementById('add-row-btn-1');
-            const addRowBtn2 = document.getElementById('add-row-btn-2');
-            const calculateBtn = document.getElementById('calculate-btn');
-            const exportPdfBtn = document.getElementById('export-pdf-btn');
-            const resetBtn = document.getElementById('reset-btn');
-            const resultsSection = document.getElementById('results-section');
-            const resultsGroup1 = document.getElementById('results-group-1');
-            const resultsGroup2 = document.getElementById('results-group-2');
-            const lc50Result1 = document.getElementById('lc50-result-1');
-            const lc50CI1 = document.getElementById('lc50-ci-1');
-            const slopeResult1 = document.getElementById('slope-result-1');
-            const chiSquareTest1 = document.getElementById('chi-square-test-1');
-            const lc50Result2 = document.getElementById('lc50-result-2');
-            const lc50CI2 = document.getElementById('lc50-ci-2');
-            const slopeResult2 = document.getElementById('slope-result-2');
-            const chiSquareTest2 = document.getElementById('chi-square-test-2');
-            let probitChart;
-
-            // 處理自訂單位輸入框的顯示
-            unitSelect.addEventListener('change', () => {
-                if (unitSelect.value === 'custom') {
-                    customUnitInput.style.display = 'inline-block';
-                } else {
-                    customUnitInput.style.display = 'none';
-                }
-            });
-
-            // 新增數據列
-            addRowBtn1.addEventListener('click', () => addRow(dataTable1.querySelector('tbody')));
-            addRowBtn2.addEventListener('click', () => addRow(dataTable2.querySelector('tbody')));
-
-            function addRow(tableBody) {
-                const newRow = tableBody.insertRow();
-                newRow.innerHTML = `
-                    <td><input type="number" class="concentration"></td>
-                    <td><input type="number" class="total"></td>
-                    <td><input type="number" class="dead"></td>
-                `;
-            }
-
-            // 處理 Excel 貼上功能
-            document.querySelectorAll('.data-table').forEach(table => {
-                table.addEventListener('paste', (event) => {
-                    const tableBody = table.querySelector('tbody');
-                    let pasteData = event.clipboardData.getData('text/plain');
-                    let rows = pasteData.trim().split('\n');
-                    
-                    // 清空現有表格內容
-                    tableBody.innerHTML = '';
-                    
-                    rows.forEach(rowString => {
-                        const cols = rowString.trim().split(/[\t\s]+/); // 分割 tab 和空格
-                        if (cols.length >= 3) {
-                            const newRow = tableBody.insertRow();
-                            newRow.innerHTML = `
-                                <td><input type="number" class="concentration" value="${cols[0]}"></td>
-                                <td><input type="number" class="total" value="${cols[1]}"></td>
-                                <td><input type="number" class="dead" value="${cols[2]}"></td>
-                            `;
-                        }
-                    });
-                    event.preventDefault();
-                });
-            });
-
-            // 重設按鈕功能
-            resetBtn.addEventListener('click', () => {
-                dataTable1.querySelector('tbody').innerHTML = `<tr><td><input type="number" class="concentration"></td><td><input type="number" class="total"></td><td><input type="number" class="dead"></td></tr>`;
-                dataTable2.querySelector('tbody').innerHTML = `<tr><td><input type="number" class="concentration"></td><td><input type="number" class="total"></td><td><input type="number" class="dead"></td></tr>`;
-                resultsSection.style.display = 'none';
-                resultsGroup2.style.display = 'none';
-                exportPdfBtn.style.display = 'none';
-                if (probitChart) {
-                    probitChart.destroy();
-                }
-            });
-
-            // 主要計算功能
-            calculateBtn.addEventListener('click', () => {
-                try {
-                    const data1 = getDataFromTable(dataTable1);
-                    const data2 = getDataFromTable(dataTable2);
-                    
-                    if (data1.length < 3) {
-                        alert('為確保計算準確，第一組數據請至少輸入三組有效的數據。');
-                        return;
-                    }
-
-                    const probitResults1 = calculateProbit(data1);
-                    const finalUnit = unitSelect.value === 'custom' ? customUnitInput.value : unitSelect.value;
-                    
-                    lc50Result1.innerText = `${probitResults1.lc50.toFixed(2)} ${finalUnit}`;
-                    lc50CI1.innerText = `95% CI: ${probitResults1.cI50[0].toFixed(2)} - ${probitResults1.cI50[1].toFixed(2)} ${finalUnit}`;
-                    slopeResult1.innerText = `${probitResults1.b.toFixed(2)}`;
-                    
-                    let pValueText1 = probitResults1.pValue >= 0.05 ? `<span style="color: #2ecc71; font-weight: bold;">(擬合良好)</span>` : `<span style="color: #e74c3c; font-weight: bold;">(擬合不良)</span>`;
-                    chiSquareTest1.innerHTML = `χ²: ${probitResults1.chiSquare.toFixed(2)} (p-value: ${probitResults1.pValue.toFixed(3)}) ${pValueText1}`;
-                    
-
-                    let datasets = [];
-                    datasets.push({
-                        label: '實驗數據點 (第一組)',
-                        data: data1.map(d => ({ x: d.concentration, y: d.mortality * 100 })),
-                        backgroundColor: 'rgba(52, 152, 219, 0.8)',
-                        pointRadius: 6,
-                        pointHoverRadius: 8
-                    }, {
-                        label: 'Probit 回歸線 (第一組)',
-                        data: generate
+    <script src="https://cdn
