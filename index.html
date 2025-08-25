@@ -1510,18 +1510,18 @@
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 
-                doc.setFont('NotoSansTC', 'bold');
+                doc.setFont('NotoSansTC');
                 doc.setFontSize(20);
                 doc.text('LC50/LC75/LC90 分析報告', 105, 20, { align: 'center' });
                 
-                doc.setFont('NotoSansTC', 'normal');
+                doc.setFont('NotoSansTC');
                 doc.setFontSize(12);
                 doc.text(`生成時間: ${new Date().toLocaleString('zh-TW')}`, 105, 30, { align: 'center' });
 
                 let yPosition = 50;
                 
                 // 第一組數據
-                doc.setFont('NotoSansTC', 'bold');
+                doc.setFont('NotoSansTC');
                 doc.setFontSize(14);
                 doc.text(`${group1NameInput.value} 實驗數據`, 20, yPosition);
                 yPosition += 10;
@@ -1557,7 +1557,7 @@
                         yPosition = 20;
                     }
                     
-                    doc.setFont('NotoSansTC', 'bold');
+                    doc.setFont('NotoSansTC');
                     doc.setFontSize(14);
                     doc.text(`${group2NameInput.value} 實驗數據`, 20, yPosition);
                     yPosition += 10;
@@ -1594,7 +1594,7 @@
                         yPosition = 20;
                     }
                     
-                    doc.setFont('NotoSansTC', 'bold');
+                    doc.setFont('NotoSansTC');
                     doc.setFontSize(14);
                     doc.text(`${group3NameInput.value} 實驗數據`, 20, yPosition);
                     yPosition += 10;
@@ -1629,17 +1629,17 @@
                     yPosition = 20;
                 }
                 
-                doc.setFont('NotoSansTC', 'bold');
+                doc.setFont('NotoSansTC');
                 doc.setFontSize(14);
                 doc.text('計算結果', 20, yPosition);
                 yPosition += 10;
                 
                 // 第一組結果
-                doc.setFont('NotoSansTC', 'bold');
+                doc.setFont('NotoSansTC');
                 doc.setFontSize(12);
                 doc.text(`${group1NameInput.value} 結果:`, 25, yPosition);
                 yPosition += 8;
-                doc.setFont('NotoSansTC', 'normal');
+                doc.setFont('NotoSansTC');
                 doc.setFontSize(11);
                 doc.text(`LC50: ${document.getElementById('lc50-result-1').textContent}`, 30, yPosition);
                 yPosition += 6;
@@ -1654,11 +1654,11 @@
 
                 // 第二組結果（如果有）
                 if (resultsGroup2.style.display !== 'none') {
-                    doc.setFont('NotoSansTC', 'bold');
+                    doc.setFont('NotoSansTC');
                     doc.setFontSize(12);
                     doc.text(`${group2NameInput.value} 結果:`, 25, yPosition);
                     yPosition += 8;
-                    doc.setFont('NotoSansTC', 'normal');
+                    doc.setFont('NotoSansTC');
                     doc.setFontSize(11);
                     doc.text(`LC50: ${document.getElementById('lc50-result-2').textContent}`, 30, yPosition);
                     yPosition += 6;
@@ -1674,11 +1674,11 @@
 
                 // 第三組結果（如果有）
                 if (resultsGroup3.style.display !== 'none') {
-                    doc.setFont('NotoSansTC', 'bold');
+                    doc.setFont('NotoSansTC');
                     doc.setFontSize(12);
                     doc.text(`${group3NameInput.value} 結果:`, 25, yPosition);
                     yPosition += 8;
-                    doc.setFont('NotoSansTC', 'normal');
+                    doc.setFont('NotoSansTC');
                     doc.setFontSize(11);
                     doc.text(`LC50: ${document.getElementById('lc50-result-3').textContent}`, 30, yPosition);
                     yPosition += 6;
@@ -1698,11 +1698,11 @@
                     yPosition = 20;
                 }
                 
-                doc.setFont('NotoSansTC', 'bold');
+                doc.setFont('NotoSansTC');
                 doc.setFontSize(12);
                 doc.text('統計驗證', 20, yPosition);
                 yPosition += 8;
-                doc.setFont('NotoSansTC', 'normal');
+                doc.setFont('NotoSansTC');
                 doc.setFontSize(10);
                 const validationText = validationDetails.innerHTML.replace(/<br>/g, '\n').replace(/<[^>]*>/g, '');
                 const splitText = doc.splitTextToSize(validationText, 170);
@@ -1715,7 +1715,7 @@
                     yPosition = 20;
                 }
                 
-                doc.setFont('NotoSansTC', 'bold');
+                doc.setFont('NotoSansTC');
                 doc.setFontSize(12);
                 doc.text('Probit 分析圖', 20, yPosition);
                 
