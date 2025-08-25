@@ -1100,8 +1100,12 @@
                 }
 
                 if (maxMort - minMort < 0.3) {
-                    return { isValid: false, message: '死亡率變化範圍太小，建議涵蓋至少30%的死亡率變化' };
-                }
+    // 改為警告訊息，但不阻止計算
+    return { 
+        isValid: true, 
+        message: `警告：死亡率變化範圍較小(${(maxMort-minMort)*100}%)，結果可能不夠準確。建議涵蓋至少30%的死亡率變化` 
+    };
+}
 
                 let isMonotonic = true;
                 for (let i = 1; i < data.length; i++) {
