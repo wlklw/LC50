@@ -1526,7 +1526,7 @@
                 doc.text(`${group1NameInput.value} 實驗數據`, 20, yPosition);
                 yPosition += 10;
                 
-                const tableData1 = [['濃度', '總數', '死亡數', '死亡率(%)']];
+                const tableData1 = [['Concentration', 'Total', 'Dead', 'Mortality(%)']];
                 dataTable1.querySelectorAll('tbody tr').forEach(row => {
                     const concentration = row.querySelector('.concentration').value;
                     const total = row.querySelector('.total').value;
@@ -1562,7 +1562,7 @@
                     doc.text(`${group2NameInput.value} 實驗數據`, 20, yPosition);
                     yPosition += 10;
                     
-                    const tableData2 = [['濃度', '總數', '死亡數', '死亡率(%)']];
+                    const tableData2 = [['Concentration', 'Total', 'Dead', 'Mortality(%)']];
                     dataTable2.querySelectorAll('tbody tr').forEach(row => {
                         const concentration = row.querySelector('.concentration').value;
                         const total = row.querySelector('.total').value;
