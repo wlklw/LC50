@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>專業 LC50 計算工具 - 改進版</title>
+    <title>專業 LC50 計算工具 - 修正版</title>
     <style>
         /* CSS 樣式 - 美編與排版 */
         body {
@@ -217,7 +217,7 @@
         .secondary-button {
             background: linear-gradient(135deg, #606c88 0%, #3f4c6b 100%);
             color: #fff;
-            box-shadow: 0 4px 15px rgba(96, 108, 136, 0.4);
+            box-shadow: 0 4-box-shadow: 0 4px 15px rgba(96, 108, 136, 0.4);
         }
         .secondary-button:hover {
             transform: translateY(-3px);
@@ -649,7 +649,6 @@
                     <div class="chart-export-buttons">
                         <button id="export-png-btn" class="export-btn export-png-btn">匯出 PNG</button>
                         <button id="export-jpg-btn" class="export-btn export-jpg-btn">匯出 JPG</button>
-                        <button id="export-svg-btn" class="export-btn export-svg-btn">匯出 SVG</button>
                     </div>
                 </div>
             </div>
@@ -658,7 +657,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="js/fonts/NotoSansTC-normal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/noto-sans-tc-font@latest/noto-sans-tc.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 
@@ -676,7 +675,6 @@
             const exportPdfBtn = document.getElementById('export-pdf-btn');
             const exportPngBtn = document.getElementById('export-png-btn');
             const exportJpgBtn = document.getElementById('export-jpg-btn');
-            const exportSvgBtn = document.getElementById('export-svg-btn');
             const resetBtn = document.getElementById('reset-btn');
             const resultsSection = document.getElementById('results-section');
             const resultsGroup1 = document.getElementById('results-group-1');
@@ -1001,6 +999,8 @@
                         } else {
                             validationText += `<br>${group2NameInput.value}：驗證失敗 - ${validation2.message}`;
                         }
+                    } else {
+                        resultsGroup2.style.display = 'none';
                     }
 
                     if (data3.length >= 3) {
@@ -1014,6 +1014,8 @@
                         } else {
                             validationText += `<br>${group3NameInput.value}：驗證失敗 - ${validation3.message}`;
                         }
+                    } else {
+                        resultsGroup3.style.display = 'none';
                     }
                     
                     validationDetails.innerHTML = validationText;
@@ -1450,7 +1452,6 @@
             // 圖表匯出功能
             exportPngBtn.addEventListener('click', () => exportChart('png'));
             exportJpgBtn.addEventListener('click', () => exportChart('jpg'));
-            exportSvgBtn.addEventListener('click', () => exportChart('svg'));
 
             function exportChart(format) {
                 if (!probitChart) {
@@ -1479,30 +1480,7 @@
                     link.download = `LC50_Probit_Chart_${new Date().toISOString().split('T')[0]}.jpg`;
                     link.href = tempCanvas.toDataURL('image/jpeg', 0.9);
                     link.click();
-                } else if (format === 'svg') {
-                    const svgContent = generateSVGFromChart();
-                    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.download = `LC50_Probit_Chart_${new Date().toISOString().split('T')[0]}.svg`;
-                    link.href = url;
-                    link.click();
-                    URL.revokeObjectURL(url);
                 }
-            }
-
-            function generateSVGFromChart() {
-                const width = 800;
-                const height = 600;
-                const unit = unitSelect.value === 'custom' ? customUnitInput.value : unitSelect.value;
-                
-                let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
-                svg += `<rect width="100%" height="100%" fill="white"/>`;
-                svg += `<text x="${width/2}" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#333">Probit 分析圖</text>`;
-                svg += `<text x="${width/2}" y="${height-20}" text-anchor="middle" font-size="14" fill="#666">濃度 (${unit})</text>`;
-                svg += `<text x="30" y="${height/2}" text-anchor="middle" font-size="14" fill="#666" transform="rotate(-90 30 ${height/2})">死亡率 (%)</text>`;
-                svg += `</svg>`;
-                return svg;
             }
 
             // 匯出 PDF 報告
@@ -1510,18 +1488,19 @@
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 
+                // 設定中文字型
+                doc.addFont('NotoSansTC-normal.ttf', 'NotoSansTC', 'normal');
                 doc.setFont('NotoSansTC');
+                
                 doc.setFontSize(20);
                 doc.text('LC50/LC75/LC90 分析報告', 105, 20, { align: 'center' });
                 
-                doc.setFont('NotoSansTC');
                 doc.setFontSize(12);
                 doc.text(`生成時間: ${new Date().toLocaleString('zh-TW')}`, 105, 30, { align: 'center' });
 
                 let yPosition = 50;
                 
                 // 第一組數據
-                doc.setFont('NotoSansTC');
                 doc.setFontSize(14);
                 doc.text(`${group1NameInput.value} 實驗數據`, 20, yPosition);
                 yPosition += 10;
@@ -1542,7 +1521,7 @@
                         startY: yPosition,
                         head: [tableData1[0]],
                         body: tableData1.slice(1),
-                        styles: { fontSize: 10 },
+                        styles: { font: 'NotoSansTC', fontSize: 10 },
                         headStyles: { fillColor: [102, 126, 234] },
                         margin: { left: 20, right: 20 }
                     });
@@ -1557,7 +1536,6 @@
                         yPosition = 20;
                     }
                     
-                    doc.setFont('NotoSansTC');
                     doc.setFontSize(14);
                     doc.text(`${group2NameInput.value} 實驗數據`, 20, yPosition);
                     yPosition += 10;
@@ -1578,7 +1556,7 @@
                             startY: yPosition,
                             head: [tableData2[0]],
                             body: tableData2.slice(1),
-                            styles: { fontSize: 10 },
+                            styles: { font: 'NotoSansTC', fontSize: 10 },
                             headStyles: { fillColor: [17, 153, 142] },
                             margin: { left: 20, right: 20 }
                         });
@@ -1594,7 +1572,6 @@
                         yPosition = 20;
                     }
                     
-                    doc.setFont('NotoSansTC');
                     doc.setFontSize(14);
                     doc.text(`${group3NameInput.value} 實驗數據`, 20, yPosition);
                     yPosition += 10;
@@ -1615,7 +1592,7 @@
                             startY: yPosition,
                             head: [tableData3[0]],
                             body: tableData3.slice(1),
-                            styles: { fontSize: 10 },
+                            styles: { font: 'NotoSansTC', fontSize: 10 },
                             headStyles: { fillColor: [255, 107, 107] },
                             margin: { left: 20, right: 20 }
                         });
@@ -1624,22 +1601,19 @@
                 }
                 
                 // 計算結果
-                if (yPosition > 200) {
+                if (yPosition > 220) {
                     doc.addPage();
                     yPosition = 20;
                 }
                 
-                doc.setFont('NotoSansTC');
                 doc.setFontSize(14);
                 doc.text('計算結果', 20, yPosition);
                 yPosition += 10;
                 
                 // 第一組結果
-                doc.setFont('NotoSansTC');
                 doc.setFontSize(12);
                 doc.text(`${group1NameInput.value} 結果:`, 25, yPosition);
                 yPosition += 8;
-                doc.setFont('NotoSansTC');
                 doc.setFontSize(11);
                 doc.text(`LC50: ${document.getElementById('lc50-result-1').textContent}`, 30, yPosition);
                 yPosition += 6;
@@ -1654,11 +1628,9 @@
 
                 // 第二組結果（如果有）
                 if (resultsGroup2.style.display !== 'none') {
-                    doc.setFont('NotoSansTC');
                     doc.setFontSize(12);
                     doc.text(`${group2NameInput.value} 結果:`, 25, yPosition);
                     yPosition += 8;
-                    doc.setFont('NotoSansTC');
                     doc.setFontSize(11);
                     doc.text(`LC50: ${document.getElementById('lc50-result-2').textContent}`, 30, yPosition);
                     yPosition += 6;
@@ -1674,11 +1646,9 @@
 
                 // 第三組結果（如果有）
                 if (resultsGroup3.style.display !== 'none') {
-                    doc.setFont('NotoSansTC');
                     doc.setFontSize(12);
                     doc.text(`${group3NameInput.value} 結果:`, 25, yPosition);
                     yPosition += 8;
-                    doc.setFont('NotoSansTC');
                     doc.setFontSize(11);
                     doc.text(`LC50: ${document.getElementById('lc50-result-3').textContent}`, 30, yPosition);
                     yPosition += 6;
@@ -1698,11 +1668,9 @@
                     yPosition = 20;
                 }
                 
-                doc.setFont('NotoSansTC');
                 doc.setFontSize(12);
                 doc.text('統計驗證', 20, yPosition);
                 yPosition += 8;
-                doc.setFont('NotoSansTC');
                 doc.setFontSize(10);
                 const validationText = validationDetails.innerHTML.replace(/<br>/g, '\n').replace(/<[^>]*>/g, '');
                 const splitText = doc.splitTextToSize(validationText, 170);
@@ -1715,7 +1683,6 @@
                     yPosition = 20;
                 }
                 
-                doc.setFont('NotoSansTC');
                 doc.setFontSize(12);
                 doc.text('Probit 分析圖', 20, yPosition);
                 
