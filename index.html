@@ -127,6 +127,11 @@
             outline: none;
         }
 
+        .keyboard-focused {
+            border-color: #667eea !important;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.4) !important;
+        }
+
         .paste-info {
             font-size: 0.9em;
             color: #888;
@@ -336,10 +341,106 @@
             color: #4a5568;
         }
 
-        .stat-value {
-            font-size: 1.2em;
+        .data-groups-config {
+            background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+            border: 2px solid #b8daff;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .data-groups-config::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        }
+
+        .data-groups-config h3 {
+            margin-top: 0;
+            color: #2c5282;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+        }
+
+        .group-names {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .name-input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .name-input-group label {
             font-weight: bold;
-            color: #667eea;
+            color: #4a5568;
+            min-width: 80px;
+        }
+
+        .name-input-group input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 2px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .name-input-group input:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.2);
+            outline: none;
+        }
+
+        .chart-export-section {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .chart-export-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .export-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .export-png-btn {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .export-jpg-btn {
+            background: #2196F3;
+            color: white;
+        }
+
+        .export-svg-btn {
+            background: #FF9800;
+            color: white;
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
     </style>
 </head>
@@ -361,12 +462,31 @@
                 </select>
                 <input type="text" id="custom-unit-input" placeholder="輸入自訂單位" style="display: none;">
             </div>
+
+            <div class="data-groups-config">
+                <h3>實驗組名稱設定</h3>
+                <div class="group-names">
+                    <div class="name-input-group">
+                        <label for="group1-name">第一組名稱:</label>
+                        <input type="text" id="group1-name" value="實驗組 A" placeholder="輸入第一組名稱">
+                    </div>
+                    <div class="name-input-group">
+                        <label for="group2-name">第二組名稱:</label>
+                        <input type="text" id="group2-name" value="實驗組 B" placeholder="輸入第二組名稱">
+                    </div>
+                    <div class="name-input-group">
+                        <label for="group3-name">第三組名稱:</label>
+                        <input type="text" id="group3-name" value="實驗組 C" placeholder="輸入第三組名稱">
+                    </div>
+                </div>
+            </div>
             
             <div class="data-group">
-                <h3>第一組數據</h3>
+                <h3 id="group1-title">第一組數據 (實驗組 A)</h3>
                 <p class="data-table-description">
                     請輸入您的實驗數據。系統會自動處理極值（0%或100%死亡率）並進行統計驗證。
                     您也可以直接從 Excel 表格複製三欄（濃度、總數、死亡數）到下方表格中。
+                    使用方向鍵可以在輸入格之間快速移動。
                 </p>
                 <table id="data-table-1" class="data-table">
                     <thead>
@@ -379,9 +499,9 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td><input type="number" class="concentration" step="any"></td>
-                            <td><input type="number" class="total" min="1"></td>
-                            <td><input type="number" class="dead" min="0"></td>
+                            <td><input type="number" class="concentration" step="any" tabindex="1"></td>
+                            <td><input type="number" class="total" min="1" tabindex="2"></td>
+                            <td><input type="number" class="dead" min="0" tabindex="3"></td>
                             <td><span class="mortality-display">--</span></td>
                         </tr>
                     </tbody>
@@ -390,7 +510,7 @@
             </div>
 
             <div class="data-group">
-                <h3>第二組數據（可選）</h3>
+                <h3 id="group2-title">第二組數據 (實驗組 B) - 可選</h3>
                 <p class="data-table-description">您可以在此處輸入另一組數據，以便與第一組數據進行比較。</p>
                 <table id="data-table-2" class="data-table">
                     <thead>
@@ -403,14 +523,38 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td><input type="number" class="concentration" step="any"></td>
-                            <td><input type="number" class="total" min="1"></td>
-                            <td><input type="number" class="dead" min="0"></td>
+                            <td><input type="number" class="concentration" step="any" tabindex="101"></td>
+                            <td><input type="number" class="total" min="1" tabindex="102"></td>
+                            <td><input type="number" class="dead" min="0" tabindex="103"></td>
                             <td><span class="mortality-display">--</span></td>
                         </tr>
                     </tbody>
                 </table>
                 <button id="add-row-btn-2" class="button primary-button">新增數據列</button>
+            </div>
+
+            <div class="data-group">
+                <h3 id="group3-title">第三組數據 (實驗組 C) - 可選</h3>
+                <p class="data-table-description">您可以在此處輸入第三組數據進行三組比較分析。</p>
+                <table id="data-table-3" class="data-table">
+                    <thead>
+                        <tr>
+                            <th>濃度 (C)</th>
+                            <th>總數 (N)</th>
+                            <th>死亡數 (D)</th>
+                            <th>死亡率 (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><input type="number" class="concentration" step="any" tabindex="201"></td>
+                            <td><input type="number" class="total" min="1" tabindex="202"></td>
+                            <td><input type="number" class="dead" min="0" tabindex="203"></td>
+                            <td><span class="mortality-display">--</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button id="add-row-btn-3" class="button primary-button">新增數據列</button>
             </div>
         </div>
 
@@ -418,7 +562,7 @@
 
         <div class="actions">
             <button id="calculate-btn" class="button accent-button">計算 LC 值</button>
-            <button id="export-pdf-btn" class="button secondary-button" style="display: none;">匯出報告</button>
+            <button id="export-pdf-btn" class="button secondary-button" style="display: none;">匯出完整報告</button>
             <button id="reset-btn" class="button secondary-button">重設</button>
         </div>
 
@@ -426,7 +570,7 @@
             <div class="results-info">
                 <h3>計算結果</h3>
                 <div id="results-group-1">
-                    <h4>第一組數據</h4>
+                    <h4 id="results-title-1">第一組數據 (實驗組 A)</h4>
                     <div class="data-stats">
                         <div class="stat-card">
                             <h5>LC50</h5>
@@ -448,7 +592,7 @@
                     </div>
                 </div>
                 <div id="results-group-2" style="display:none;">
-                    <h4>第二組數據</h4>
+                    <h4 id="results-title-2">第二組數據 (實驗組 B)</h4>
                     <div class="data-stats">
                         <div class="stat-card">
                             <h5>LC50</h5>
@@ -469,6 +613,28 @@
                         </div>
                     </div>
                 </div>
+                <div id="results-group-3" style="display:none;">
+                    <h4 id="results-title-3">第三組數據 (實驗組 C)</h4>
+                    <div class="data-stats">
+                        <div class="stat-card">
+                            <h5>LC50</h5>
+                            <div class="stat-value" id="lc50-result-3">--</div>
+                            <div class="confidence-interval" id="lc50-ci-3">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <h5>LC75</h5>
+                            <div class="stat-value" id="lc75-result-3">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <h5>LC90</h5>
+                            <div class="stat-value" id="lc90-result-3">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <h5>回歸線斜率 (b)</h5>
+                            <div class="stat-value" id="slope-result-3">--</div>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="validation-info" id="validation-info">
                     <h4>統計驗證</h4>
@@ -478,6 +644,14 @@
             
             <div class="chart-container">
                 <canvas id="probit-chart"></canvas>
+                <div class="chart-export-section">
+                    <h4>圖表匯出</h4>
+                    <div class="chart-export-buttons">
+                        <button id="export-png-btn" class="export-btn export-png-btn">匯出 PNG</button>
+                        <button id="export-jpg-btn" class="export-btn export-jpg-btn">匯出 JPG</button>
+                        <button id="export-svg-btn" class="export-btn export-svg-btn">匯出 SVG</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -493,17 +667,48 @@
             const customUnitInput = document.getElementById('custom-unit-input');
             const dataTable1 = document.getElementById('data-table-1');
             const dataTable2 = document.getElementById('data-table-2');
+            const dataTable3 = document.getElementById('data-table-3');
             const addRowBtn1 = document.getElementById('add-row-btn-1');
             const addRowBtn2 = document.getElementById('add-row-btn-2');
+            const addRowBtn3 = document.getElementById('add-row-btn-3');
             const calculateBtn = document.getElementById('calculate-btn');
             const exportPdfBtn = document.getElementById('export-pdf-btn');
+            const exportPngBtn = document.getElementById('export-png-btn');
+            const exportJpgBtn = document.getElementById('export-jpg-btn');
+            const exportSvgBtn = document.getElementById('export-svg-btn');
             const resetBtn = document.getElementById('reset-btn');
             const resultsSection = document.getElementById('results-section');
             const resultsGroup1 = document.getElementById('results-group-1');
             const resultsGroup2 = document.getElementById('results-group-2');
+            const resultsGroup3 = document.getElementById('results-group-3');
             const validationInfo = document.getElementById('validation-info');
             const validationDetails = document.getElementById('validation-details');
+            
+            // 組名輸入框
+            const group1NameInput = document.getElementById('group1-name');
+            const group2NameInput = document.getElementById('group2-name');
+            const group3NameInput = document.getElementById('group3-name');
+            
             let probitChart;
+
+            // 更新組名顯示
+            function updateGroupNames() {
+                document.getElementById('group1-title').textContent = `第一組數據 (${group1NameInput.value})`;
+                document.getElementById('group2-title').textContent = `第二組數據 (${group2NameInput.value}) - 可選`;
+                document.getElementById('group3-title').textContent = `第三組數據 (${group3NameInput.value}) - 可選`;
+                
+                document.getElementById('results-title-1').textContent = `第一組數據 (${group1NameInput.value})`;
+                document.getElementById('results-title-2').textContent = `第二組數據 (${group2NameInput.value})`;
+                document.getElementById('results-title-3').textContent = `第三組數據 (${group3NameInput.value})`;
+            }
+            
+            // 監聽組名變更
+            group1NameInput.addEventListener('input', updateGroupNames);
+            group2NameInput.addEventListener('input', updateGroupNames);
+            group3NameInput.addEventListener('input', updateGroupNames);
+            
+            // 初始化組名
+            updateGroupNames();
 
             // 處理自訂單位輸入框的顯示
             unitSelect.addEventListener('change', () => {
@@ -514,19 +719,164 @@
                 }
             });
 
-            // 新增數據列
-            addRowBtn1.addEventListener('click', () => addRow(dataTable1.querySelector('tbody')));
-            addRowBtn2.addEventListener('click', () => addRow(dataTable2.querySelector('tbody')));
+            // 鍵盤導航功能
+            function setupKeyboardNavigation() {
+                const allInputs = document.querySelectorAll('.data-table input[type="number"]');
+                
+                allInputs.forEach((input, index) => {
+                    input.addEventListener('keydown', (e) => {
+                        let nextIndex = -1;
+                        
+                        switch(e.key) {
+                            case 'ArrowDown':
+                                e.preventDefault();
+                                nextIndex = findNextRowInput(input, 1);
+                                break;
+                            case 'ArrowUp':
+                                e.preventDefault();
+                                nextIndex = findNextRowInput(input, -1);
+                                break;
+                            case 'ArrowRight':
+                            case 'Tab':
+                                if (e.key === 'Tab' && e.shiftKey) break;
+                                e.preventDefault();
+                                nextIndex = findNextColumnInput(input, 1);
+                                break;
+                            case 'ArrowLeft':
+                                e.preventDefault();
+                                nextIndex = findNextColumnInput(input, -1);
+                                break;
+                            case 'Enter':
+                                e.preventDefault();
+                                nextIndex = findNextRowInput(input, 1);
+                                break;
+                        }
+                        
+                        if (nextIndex !== -1) {
+                            const nextInput = document.querySelectorAll('.data-table input[type="number"]')[nextIndex];
+                            if (nextInput) {
+                                nextInput.focus();
+                                nextInput.select();
+                            }
+                        }
+                    });
+                    
+                    // 視覺反饋
+                    input.addEventListener('focus', () => {
+                        input.classList.add('keyboard-focused');
+                    });
+                    
+                    input.addEventListener('blur', () => {
+                        input.classList.remove('keyboard-focused');
+                    });
+                });
+            }
+            
+            function findNextRowInput(currentInput, direction) {
+                const allInputs = Array.from(document.querySelectorAll('.data-table input[type="number"]'));
+                const currentIndex = allInputs.indexOf(currentInput);
+                const currentRow = currentInput.closest('tr');
+                const currentTable = currentInput.closest('table');
+                const currentColumn = Array.from(currentRow.querySelectorAll('input[type="number"]')).indexOf(currentInput);
+                
+                let nextRow;
+                if (direction > 0) {
+                    nextRow = currentRow.nextElementSibling;
+                    if (!nextRow) {
+                        // 尋找下一個表格的第一行
+                        let nextTable = currentTable.parentNode;
+                        while (nextTable && nextTable.nextElementSibling) {
+                            nextTable = nextTable.nextElementSibling;
+                            const foundTable = nextTable.querySelector('.data-table');
+                            if (foundTable) {
+                                nextRow = foundTable.querySelector('tbody tr');
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    nextRow = currentRow.previousElementSibling;
+                    if (!nextRow) {
+                        // 尋找上一個表格的最後一行
+                        let prevTable = currentTable.parentNode;
+                        while (prevTable && prevTable.previousElementSibling) {
+                            prevTable = prevTable.previousElementSibling;
+                            const foundTable = prevTable.querySelector('.data-table');
+                            if (foundTable) {
+                                const rows = foundTable.querySelectorAll('tbody tr');
+                                nextRow = rows[rows.length - 1];
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                if (nextRow) {
+                    const nextInput = nextRow.querySelectorAll('input[type="number"]')[currentColumn];
+                    if (nextInput) {
+                        const nextIndex = allInputs.indexOf(nextInput);
+                        return nextIndex;
+                    }
+                }
+                
+                return -1;
+            }
+            
+            function findNextColumnInput(currentInput, direction) {
+                const allInputs = Array.from(document.querySelectorAll('.data-table input[type="number"]'));
+                const currentIndex = allInputs.indexOf(currentInput);
+                const currentRow = currentInput.closest('tr');
+                const rowInputs = Array.from(currentRow.querySelectorAll('input[type="number"]'));
+                const currentColumn = rowInputs.indexOf(currentInput);
+                
+                let nextInput;
+                if (direction > 0) {
+                    if (currentColumn < rowInputs.length - 1) {
+                        nextInput = rowInputs[currentColumn + 1];
+                    } else {
+                        // 移到下一行的第一列
+                        return findNextRowInput(currentInput, 1);
+                    }
+                } else {
+                    if (currentColumn > 0) {
+                        nextInput = rowInputs[currentColumn - 1];
+                    } else {
+                        // 移到上一行的最後一列
+                        const prevRowIndex = findNextRowInput(currentInput, -1);
+                        if (prevRowIndex !== -1) {
+                            const prevInput = allInputs[prevRowIndex];
+                            const prevRow = prevInput.closest('tr');
+                            const prevRowInputs = Array.from(prevRow.querySelectorAll('input[type="number"]'));
+                            nextInput = prevRowInputs[prevRowInputs.length - 1];
+                        }
+                    }
+                }
+                
+                if (nextInput) {
+                    return allInputs.indexOf(nextInput);
+                }
+                
+                return -1;
+            }
 
-            function addRow(tableBody) {
+            // 新增數據列
+            addRowBtn1.addEventListener('click', () => addRow(dataTable1.querySelector('tbody'), 1));
+            addRowBtn2.addEventListener('click', () => addRow(dataTable2.querySelector('tbody'), 2));
+            addRowBtn3.addEventListener('click', () => addRow(dataTable3.querySelector('tbody'), 3));
+
+            function addRow(tableBody, groupNum) {
+                const rowCount = tableBody.children.length;
+                const baseTabIndex = groupNum * 100 + rowCount * 10;
+                
                 const newRow = tableBody.insertRow();
                 newRow.innerHTML = `
-                    <td><input type="number" class="concentration" step="any"></td>
-                    <td><input type="number" class="total" min="1"></td>
-                    <td><input type="number" class="dead" min="0"></td>
+                    <td><input type="number" class="concentration" step="any" tabindex="${baseTabIndex + 1}"></td>
+                    <td><input type="number" class="total" min="1" tabindex="${baseTabIndex + 2}"></td>
+                    <td><input type="number" class="dead" min="0" tabindex="${baseTabIndex + 3}"></td>
                     <td><span class="mortality-display">--</span></td>
                 `;
                 attachInputListeners(newRow);
+                setupKeyboardNavigation();
             }
 
             // 附加輸入監聽器來自動計算死亡率
@@ -541,9 +891,8 @@
                     if (!isNaN(total) && !isNaN(dead) && total > 0) {
                         if (dead > total) {
                             deadInput.value = total;
-                            dead = total;
                         }
-                        const mortality = (dead / total * 100).toFixed(1);
+                        const mortality = (parseInt(deadInput.value) / total * 100).toFixed(1);
                         mortalityDisplay.textContent = mortality + '%';
                     } else {
                         mortalityDisplay.textContent = '--';
@@ -554,8 +903,9 @@
                 deadInput.addEventListener('input', updateMortality);
             }
 
-            // 初始化現有行的監聽器
+            // 初始化現有行的監聽器和鍵盤導航
             document.querySelectorAll('.data-table tbody tr').forEach(attachInputListeners);
+            setupKeyboardNavigation();
 
             // 處理 Excel 貼上功能
             document.querySelectorAll('.data-table').forEach(table => {
@@ -567,9 +917,13 @@
                     // 清空現有表格內容
                     tableBody.innerHTML = '';
                     
-                    rows.forEach(rowString => {
+                    const tableId = table.id;
+                    const groupNum = parseInt(tableId.split('-')[2]);
+                    
+                    rows.forEach((rowString, index) => {
                         const cols = rowString.trim().split(/[\t\s]+/);
                         if (cols.length >= 3) {
+                            const baseTabIndex = groupNum * 100 + index * 10;
                             const newRow = tableBody.insertRow();
                             const concentration = parseFloat(cols[0]);
                             const total = parseInt(cols[1]);
@@ -578,28 +932,32 @@
                                 (dead / total * 100).toFixed(1) : '--';
                             
                             newRow.innerHTML = `
-                                <td><input type="number" class="concentration" step="any" value="${cols[0]}"></td>
-                                <td><input type="number" class="total" min="1" value="${cols[1]}"></td>
-                                <td><input type="number" class="dead" min="0" value="${cols[2]}"></td>
+                                <td><input type="number" class="concentration" step="any" value="${cols[0]}" tabindex="${baseTabIndex + 1}"></td>
+                                <td><input type="number" class="total" min="1" value="${cols[1]}" tabindex="${baseTabIndex + 2}"></td>
+                                <td><input type="number" class="dead" min="0" value="${cols[2]}" tabindex="${baseTabIndex + 3}"></td>
                                 <td><span class="mortality-display">${mortality}%</span></td>
                             `;
                             attachInputListeners(newRow);
                         }
                     });
+                    setupKeyboardNavigation();
                     event.preventDefault();
                 });
             });
 
             // 重設按鈕功能
             resetBtn.addEventListener('click', () => {
-                dataTable1.querySelector('tbody').innerHTML = `<tr><td><input type="number" class="concentration" step="any"></td><td><input type="number" class="total" min="1"></td><td><input type="number" class="dead" min="0"></td><td><span class="mortality-display">--</span></td></tr>`;
-                dataTable2.querySelector('tbody').innerHTML = `<tr><td><input type="number" class="concentration" step="any"></td><td><input type="number" class="total" min="1"></td><td><input type="number" class="dead" min="0"></td><td><span class="mortality-display">--</span></td></tr>`;
+                dataTable1.querySelector('tbody').innerHTML = `<tr><td><input type="number" class="concentration" step="any" tabindex="1"></td><td><input type="number" class="total" min="1" tabindex="2"></td><td><input type="number" class="dead" min="0" tabindex="3"></td><td><span class="mortality-display">--</span></td></tr>`;
+                dataTable2.querySelector('tbody').innerHTML = `<tr><td><input type="number" class="concentration" step="any" tabindex="101"></td><td><input type="number" class="total" min="1" tabindex="102"></td><td><input type="number" class="dead" min="0" tabindex="103"></td><td><span class="mortality-display">--</span></td></tr>`;
+                dataTable3.querySelector('tbody').innerHTML = `<tr><td><input type="number" class="concentration" step="any" tabindex="201"></td><td><input type="number" class="total" min="1" tabindex="202"></td><td><input type="number" class="dead" min="0" tabindex="203"></td><td><span class="mortality-display">--</span></td></tr>`;
                 
                 // 重新附加監聽器
                 document.querySelectorAll('.data-table tbody tr').forEach(attachInputListeners);
+                setupKeyboardNavigation();
                 
                 resultsSection.style.display = 'none';
                 resultsGroup2.style.display = 'none';
+                resultsGroup3.style.display = 'none';
                 exportPdfBtn.style.display = 'none';
                 if (probitChart) {
                     probitChart.destroy();
@@ -611,6 +969,7 @@
                 try {
                     const data1 = getDataFromTable(dataTable1);
                     const data2 = getDataFromTable(dataTable2);
+                    const data3 = getDataFromTable(dataTable3);
                     
                     if (data1.length < 3) {
                         showError('第一組數據請至少輸入三組有效數據以確保統計計算的可靠性。');
@@ -628,7 +987,7 @@
                     displayResults(probitResults1, 1);
                     
                     let datasets = createChartDatasets(data1, probitResults1, 1);
-                    let validationText = `第一組數據：${validation1.message}`;
+                    let validationText = `${group1NameInput.value}：${validation1.message}`;
 
                     if (data2.length >= 3) {
                         const validation2 = validateData(data2);
@@ -636,10 +995,23 @@
                             const probitResults2 = calculateProbit(data2);
                             displayResults(probitResults2, 2);
                             datasets = datasets.concat(createChartDatasets(data2, probitResults2, 2));
-                            validationText += `<br>第二組數據：${validation2.message}`;
+                            validationText += `<br>${group2NameInput.value}：${validation2.message}`;
                             resultsGroup2.style.display = 'block';
                         } else {
-                            validationText += `<br>第二組數據：驗證失敗 - ${validation2.message}`;
+                            validationText += `<br>${group2NameInput.value}：驗證失敗 - ${validation2.message}`;
+                        }
+                    }
+
+                    if (data3.length >= 3) {
+                        const validation3 = validateData(data3);
+                        if (validation3.isValid) {
+                            const probitResults3 = calculateProbit(data3);
+                            displayResults(probitResults3, 3);
+                            datasets = datasets.concat(createChartDatasets(data3, probitResults3, 3));
+                            validationText += `<br>${group3NameInput.value}：${validation3.message}`;
+                            resultsGroup3.style.display = 'block';
+                        } else {
+                            validationText += `<br>${group3NameInput.value}：驗證失敗 - ${validation3.message}`;
                         }
                     }
                     
@@ -654,17 +1026,14 @@
             });
 
             function showError(message) {
-                // 移除舊的錯誤消息
                 const oldError = document.querySelector('.error-message');
                 if (oldError) oldError.remove();
 
-                // 創建新的錯誤消息
                 const errorDiv = document.createElement('div');
                 errorDiv.className = 'error-message';
                 errorDiv.innerHTML = `<strong>錯誤：</strong> ${message}`;
                 calculateBtn.parentNode.insertBefore(errorDiv, calculateBtn.nextSibling);
 
-                // 3秒後自動移除
                 setTimeout(() => {
                     errorDiv.remove();
                 }, 5000);
@@ -685,18 +1054,16 @@
                     const total = parseInt(totalInput.value);
                     const dead = parseInt(deadInput.value);
 
-                    // 驗證並收集數據
                     if (!isNaN(concentration) && !isNaN(total) && !isNaN(dead) && 
                         concentration > 0 && total > 0 && dead >= 0 && dead <= total) {
                         
                         let mortality = dead / total;
                         let adjustedMortality = mortality;
                         
-                        // Abbott 校正處理極值
                         if (mortality === 0) {
-                            adjustedMortality = 0.5 / total; // 加入小修正值
+                            adjustedMortality = 0.5 / total;
                         } else if (mortality === 1) {
-                            adjustedMortality = (total - 0.5) / total; // 減去小修正值
+                            adjustedMortality = (total - 0.5) / total;
                         }
                         
                         data.push({
@@ -710,7 +1077,6 @@
                     }
                 });
                 
-                // 按濃度排序
                 data.sort((a, b) => a.concentration - b.concentration);
                 return data;
             }
@@ -720,7 +1086,6 @@
                     return { isValid: false, message: '數據點不足，需要至少3個有效數據點' };
                 }
 
-                // 檢查濃度範圍
                 const concentrations = data.map(d => d.concentration);
                 const mortalities = data.map(d => d.mortality);
                 
@@ -737,7 +1102,6 @@
                     return { isValid: false, message: '死亡率變化範圍太小，建議涵蓋至少30%的死亡率變化' };
                 }
 
-                // 檢查濃度-反應關係的單調性
                 let isMonotonic = true;
                 for (let i = 1; i < data.length; i++) {
                     if (data[i].concentration > data[i-1].concentration && 
@@ -760,28 +1124,22 @@
                 };
             }
 
-            // 改進的 Probit 轉換函數
             function probit(p) {
-                // 確保 p 在有效範圍內
                 if (p <= 0 || p >= 1) {
                     throw new Error(`無效的死亡率值: ${p}`);
                 }
                 
-                // 使用逆標準正態分佈函數
                 const z = inverseNormalCDF(p);
                 return 5 + z;
             }
 
-            // 逆標準正態分佈函數（使用 Beasley-Springer-Moro 算法的簡化版本）
             function inverseNormalCDF(p) {
                 if (p < 0.5) {
-                    // 對稱性：F^(-1)(p) = -F^(-1)(1-p)
                     return -inverseNormalCDF(1 - p);
                 }
                 
                 const t = Math.sqrt(-2 * Math.log(1 - p));
                 
-                // 多項式逼近
                 const c0 = 2.515517;
                 const c1 = 0.802853;
                 const c2 = 0.010328;
@@ -792,11 +1150,9 @@
                 return t - ((c2*t + c1)*t + c0) / (((d3*t + d2)*t + d1)*t + 1);
             }
 
-            // 改進的 Probit 回歸計算
             function calculateProbit(data) {
                 const n = data.length;
                 
-                // 使用加權最小二乘法
                 let sumW = 0, sumWX = 0, sumWY = 0, sumWXY = 0, sumWX2 = 0;
                 
                 data.forEach(d => {
@@ -822,15 +1178,11 @@
                     throw new Error('回歸線斜率為負或零，數據不符合劑量-反應關係');
                 }
 
-                // 計算各種LC值
                 const logLC50 = (5 - a) / b;
-                const logLC75 = (5.67 - a) / b; // probit(0.75) ≈ 5.67
-                const logLC90 = (6.28 - a) / b; // probit(0.90) ≈ 6.28
+                const logLC75 = (5.67 - a) / b;
+                const logLC90 = (6.28 - a) / b;
 
-                // 計算信賴區間（簡化方法）
                 const confidenceInterval = calculateConfidenceInterval(data, a, b, logLC50);
-                
-                // 計算擬合優度
                 const goodnessOfFit = calculateGoodnessOfFit(data, a, b);
 
                 return {
@@ -846,20 +1198,16 @@
                 };
             }
 
-            // 計算權重（基於死亡率和樣本數）
             function calculateWeight(p, n) {
-                // 使用標準的 Probit 分析權重公式
                 const z = inverseNormalCDF(p);
-                const phi = (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * z * z); // 標準正態密度
+                const phi = (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * z * z);
                 return (n * phi * phi) / (p * (1 - p));
             }
 
-            // 計算信賴區間
             function calculateConfidenceInterval(data, a, b, logLC50) {
                 const n = data.length;
                 const df = n - 2;
                 
-                // 計算標準誤差
                 let sumSquaredResiduals = 0;
                 data.forEach(d => {
                     const logConc = Math.log10(d.concentration);
@@ -874,7 +1222,6 @@
                     return sum + Math.pow(logConc - meanLogConc, 2);
                 }, 0));
                 
-                // t 值 for 95% 信賴區間
                 const tValue = getTValue(df, 0.025);
                 const seLogLC50 = seSlope / Math.abs(b);
                 
@@ -885,9 +1232,7 @@
                 ];
             }
 
-            // 簡化的 t 分佈臨界值
             function getTValue(df, alpha) {
-                // 簡化的 t 表，對於常見的自由度
                 const tTable = {
                     1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571,
                     6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
@@ -896,10 +1241,9 @@
                 
                 if (tTable[df]) return tTable[df];
                 if (df <= 30) return 2.042;
-                return 1.96; // 大樣本近似
+                return 1.96;
             }
 
-            // 計算擬合優度
             function calculateGoodnessOfFit(data, a, b) {
                 const n = data.length;
                 let ssTot = 0, ssRes = 0;
@@ -914,7 +1258,6 @@
                 
                 const r2 = 1 - (ssRes / ssTot);
                 
-                // 簡化的卡方檢驗
                 let chiSquare = 0;
                 data.forEach(d => {
                     const logConc = Math.log10(d.concentration);
@@ -927,17 +1270,15 @@
                 });
                 
                 const df = n - 2;
-                const pValue = 1 - chiSquareCDF(chiSquare, df); // 簡化計算
+                const pValue = 1 - chiSquareCDF(chiSquare, df);
                 
                 return { r2, chiSquare, pValue };
             }
 
-            // 標準正態累積分佈函數
             function normalCDF(x) {
                 return 0.5 * (1 + erf(x / Math.sqrt(2)));
             }
 
-            // 誤差函數的近似
             function erf(x) {
                 const a1 =  0.254829592;
                 const a2 = -0.284496736;
@@ -955,19 +1296,16 @@
                 return sign * y;
             }
 
-            // 簡化的卡方累積分佈函數
             function chiSquareCDF(x, df) {
                 if (x <= 0) return 0;
                 if (df === 1) return 2 * normalCDF(Math.sqrt(x)) - 1;
                 if (df === 2) return 1 - Math.exp(-x / 2);
-                // 對於其他自由度，使用近似
                 const mean = df;
                 const variance = 2 * df;
                 const normalized = (x - mean) / Math.sqrt(variance);
                 return normalCDF(normalized);
             }
 
-            // 顯示結果
             function displayResults(results, groupNum) {
                 const unit = unitSelect.value === 'custom' ? customUnitInput.value : unitSelect.value;
                 
@@ -983,16 +1321,22 @@
                     `${results.slope.toFixed(3)} (R² = ${results.r2.toFixed(3)})`;
             }
 
-            // 創建圖表數據集
             function createChartDatasets(data, results, groupNum) {
                 const colors = {
                     1: { point: 'rgba(102, 126, 234, 0.8)', line: '#667eea' },
-                    2: { point: 'rgba(17, 153, 142, 0.8)', line: '#11998e' }
+                    2: { point: 'rgba(17, 153, 142, 0.8)', line: '#11998e' },
+                    3: { point: 'rgba(255, 107, 107, 0.8)', line: '#ff6b6b' }
                 };
+                
+                const groupNames = [
+                    group1NameInput.value,
+                    group2NameInput.value,
+                    group3NameInput.value
+                ];
                 
                 return [
                     {
-                        label: `實驗數據點 (第${groupNum}組)`,
+                        label: `實驗數據點 (${groupNames[groupNum-1]})`,
                         data: data.map(d => ({ x: d.concentration, y: d.mortality * 100 })),
                         backgroundColor: colors[groupNum].point,
                         pointRadius: 8,
@@ -1001,7 +1345,7 @@
                         pointBorderColor: 'white'
                     },
                     {
-                        label: `Probit 回歸線 (第${groupNum}組)`,
+                        label: `Probit 回歸線 (${groupNames[groupNum-1]})`,
                         data: generateLineData(results),
                         type: 'line',
                         borderColor: colors[groupNum].line,
@@ -1015,7 +1359,6 @@
                 ];
             }
 
-            // 生成回歸線數據點
             function generateLineData(results) {
                 const lineDataPoints = [];
                 for (let i = 1; i <= 99; i++) {
@@ -1024,7 +1367,6 @@
                     const logC = (probitValue - results.intercept) / results.slope;
                     const concentration = Math.pow(10, logC);
                     
-                    // 只包含合理範圍內的點
                     if (concentration > 0 && concentration < 1e6) {
                         lineDataPoints.push({ x: concentration, y: i });
                     }
@@ -1032,7 +1374,6 @@
                 return lineDataPoints;
             }
 
-            // 繪製圖表
             function renderChart(datasets) {
                 const ctx = document.getElementById('probit-chart').getContext('2d');
                 if (probitChart) {
@@ -1105,12 +1446,69 @@
                 });
             }
 
+            // 圖表匯出功能
+            exportPngBtn.addEventListener('click', () => exportChart('png'));
+            exportJpgBtn.addEventListener('click', () => exportChart('jpg'));
+            exportSvgBtn.addEventListener('click', () => exportChart('svg'));
+
+            function exportChart(format) {
+                if (!probitChart) {
+                    alert('請先計算結果以生成圖表');
+                    return;
+                }
+
+                const canvas = probitChart.canvas;
+                
+                if (format === 'png') {
+                    const link = document.createElement('a');
+                    link.download = `LC50_Probit_Chart_${new Date().toISOString().split('T')[0]}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                } else if (format === 'jpg') {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = canvas.width;
+                    tempCanvas.height = canvas.height;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    
+                    tempCtx.fillStyle = 'white';
+                    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                    tempCtx.drawImage(canvas, 0, 0);
+                    
+                    const link = document.createElement('a');
+                    link.download = `LC50_Probit_Chart_${new Date().toISOString().split('T')[0]}.jpg`;
+                    link.href = tempCanvas.toDataURL('image/jpeg', 0.9);
+                    link.click();
+                } else if (format === 'svg') {
+                    const svgContent = generateSVGFromChart();
+                    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.download = `LC50_Probit_Chart_${new Date().toISOString().split('T')[0]}.svg`;
+                    link.href = url;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                }
+            }
+
+            function generateSVGFromChart() {
+                const width = 800;
+                const height = 600;
+                const unit = unitSelect.value === 'custom' ? customUnitInput.value : unitSelect.value;
+                
+                let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
+                svg += `<rect width="100%" height="100%" fill="white"/>`;
+                svg += `<text x="${width/2}" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#333">Probit 分析圖</text>`;
+                svg += `<text x="${width/2}" y="${height-20}" text-anchor="middle" font-size="14" fill="#666">濃度 (${unit})</text>`;
+                svg += `<text x="30" y="${height/2}" text-anchor="middle" font-size="14" fill="#666" transform="rotate(-90 30 ${height/2})">死亡率 (%)</text>`;
+                svg += `</svg>`;
+                return svg;
+            }
+
             // 匯出 PDF 報告
             exportPdfBtn.addEventListener('click', () => {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 
-                // 標題
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(20);
                 doc.text('LC50/LC75/LC90 分析報告', 105, 20, { align: 'center' });
@@ -1124,10 +1522,9 @@
                 // 第一組數據
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(14);
-                doc.text('第一組實驗數據', 20, yPosition);
+                doc.text(`${group1NameInput.value} 實驗數據`, 20, yPosition);
                 yPosition += 10;
                 
-                // 表格數據
                 const tableData1 = [['濃度', '總數', '死亡數', '死亡率(%)']];
                 dataTable1.querySelectorAll('tbody tr').forEach(row => {
                     const concentration = row.querySelector('.concentration').value;
@@ -1150,28 +1547,156 @@
                     });
                     yPosition = doc.lastAutoTable.finalY + 15;
                 }
+
+                // 第二組數據（如果存在）
+                const data2 = getDataFromTable(dataTable2);
+                if (data2.length > 0) {
+                    if (yPosition > 200) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(14);
+                    doc.text(`${group2NameInput.value} 實驗數據`, 20, yPosition);
+                    yPosition += 10;
+                    
+                    const tableData2 = [['濃度', '總數', '死亡數', '死亡率(%)']];
+                    dataTable2.querySelectorAll('tbody tr').forEach(row => {
+                        const concentration = row.querySelector('.concentration').value;
+                        const total = row.querySelector('.total').value;
+                        const dead = row.querySelector('.dead').value;
+                        if (concentration && total && dead) {
+                            const mortality = ((dead / total) * 100).toFixed(1);
+                            tableData2.push([concentration, total, dead, mortality]);
+                        }
+                    });
+                    
+                    if (tableData2.length > 1) {
+                        doc.autoTable({
+                            startY: yPosition,
+                            head: [tableData2[0]],
+                            body: tableData2.slice(1),
+                            styles: { fontSize: 10 },
+                            headStyles: { fillColor: [17, 153, 142] },
+                            margin: { left: 20, right: 20 }
+                        });
+                        yPosition = doc.lastAutoTable.finalY + 15;
+                    }
+                }
+
+                // 第三組數據（如果存在）
+                const data3 = getDataFromTable(dataTable3);
+                if (data3.length > 0) {
+                    if (yPosition > 200) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(14);
+                    doc.text(`${group3NameInput.value} 實驗數據`, 20, yPosition);
+                    yPosition += 10;
+                    
+                    const tableData3 = [['濃度', '總數', '死亡數', '死亡率(%)']];
+                    dataTable3.querySelectorAll('tbody tr').forEach(row => {
+                        const concentration = row.querySelector('.concentration').value;
+                        const total = row.querySelector('.total').value;
+                        const dead = row.querySelector('.dead').value;
+                        if (concentration && total && dead) {
+                            const mortality = ((dead / total) * 100).toFixed(1);
+                            tableData3.push([concentration, total, dead, mortality]);
+                        }
+                    });
+                    
+                    if (tableData3.length > 1) {
+                        doc.autoTable({
+                            startY: yPosition,
+                            head: [tableData3[0]],
+                            body: tableData3.slice(1),
+                            styles: { fontSize: 10 },
+                            headStyles: { fillColor: [255, 107, 107] },
+                            margin: { left: 20, right: 20 }
+                        });
+                        yPosition = doc.lastAutoTable.finalY + 15;
+                    }
+                }
                 
                 // 計算結果
+                if (yPosition > 200) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+                
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(14);
                 doc.text('計算結果', 20, yPosition);
                 yPosition += 10;
                 
-                const unit = unitSelect.value === 'custom' ? customUnitInput.value : unitSelect.value;
+                // 第一組結果
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(12);
+                doc.text(`${group1NameInput.value} 結果:`, 25, yPosition);
+                yPosition += 8;
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(11);
-                doc.text(`LC50: ${document.getElementById('lc50-result-1').textContent}`, 25, yPosition);
-                yPosition += 8;
-                doc.text(`${document.getElementById('lc50-ci-1').textContent}`, 25, yPosition);
-                yPosition += 8;
-                doc.text(`LC75: ${document.getElementById('lc75-result-1').textContent}`, 25, yPosition);
-                yPosition += 8;
-                doc.text(`LC90: ${document.getElementById('lc90-result-1').textContent}`, 25, yPosition);
-                yPosition += 8;
-                doc.text(`回歸線斜率: ${document.getElementById('slope-result-1').textContent}`, 25, yPosition);
-                yPosition += 15;
-                
+                doc.text(`LC50: ${document.getElementById('lc50-result-1').textContent}`, 30, yPosition);
+                yPosition += 6;
+                doc.text(`${document.getElementById('lc50-ci-1').textContent}`, 30, yPosition);
+                yPosition += 6;
+                doc.text(`LC75: ${document.getElementById('lc75-result-1').textContent}`, 30, yPosition);
+                yPosition += 6;
+                doc.text(`LC90: ${document.getElementById('lc90-result-1').textContent}`, 30, yPosition);
+                yPosition += 6;
+                doc.text(`回歸線斜率: ${document.getElementById('slope-result-1').textContent}`, 30, yPosition);
+                yPosition += 12;
+
+                // 第二組結果（如果有）
+                if (resultsGroup2.style.display !== 'none') {
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(12);
+                    doc.text(`${group2NameInput.value} 結果:`, 25, yPosition);
+                    yPosition += 8;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(11);
+                    doc.text(`LC50: ${document.getElementById('lc50-result-2').textContent}`, 30, yPosition);
+                    yPosition += 6;
+                    doc.text(`${document.getElementById('lc50-ci-2').textContent}`, 30, yPosition);
+                    yPosition += 6;
+                    doc.text(`LC75: ${document.getElementById('lc75-result-2').textContent}`, 30, yPosition);
+                    yPosition += 6;
+                    doc.text(`LC90: ${document.getElementById('lc90-result-2').textContent}`, 30, yPosition);
+                    yPosition += 6;
+                    doc.text(`回歸線斜率: ${document.getElementById('slope-result-2').textContent}`, 30, yPosition);
+                    yPosition += 12;
+                }
+
+                // 第三組結果（如果有）
+                if (resultsGroup3.style.display !== 'none') {
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(12);
+                    doc.text(`${group3NameInput.value} 結果:`, 25, yPosition);
+                    yPosition += 8;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(11);
+                    doc.text(`LC50: ${document.getElementById('lc50-result-3').textContent}`, 30, yPosition);
+                    yPosition += 6;
+                    doc.text(`${document.getElementById('lc50-ci-3').textContent}`, 30, yPosition);
+                    yPosition += 6;
+                    doc.text(`LC75: ${document.getElementById('lc75-result-3').textContent}`, 30, yPosition);
+                    yPosition += 6;
+                    doc.text(`LC90: ${document.getElementById('lc90-result-3').textContent}`, 30, yPosition);
+                    yPosition += 6;
+                    doc.text(`回歸線斜率: ${document.getElementById('slope-result-3').textContent}`, 30, yPosition);
+                    yPosition += 12;
+                }
+
                 // 統計驗證信息
+                if (yPosition > 220) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+                
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(12);
                 doc.text('統計驗證', 20, yPosition);
@@ -1193,7 +1718,6 @@
                 doc.setFontSize(12);
                 doc.text('Probit 分析圖', 20, yPosition);
                 
-                // 使用 html2canvas 轉換圖表
                 html2canvas(document.getElementById('probit-chart')).then(canvas => {
                     const imgData = canvas.toDataURL('image/png');
                     const imgWidth = 170;
@@ -1205,7 +1729,7 @@
                     }
                     
                     doc.addImage(imgData, 'PNG', 20, yPosition + 10, imgWidth, imgHeight);
-                    doc.save('LC50_Analysis_Report_Improved.pdf');
+                    doc.save('LC50_Analysis_Report.pdf');
                 });
             });
         });
