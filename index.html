@@ -403,9 +403,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="js/fonts/NotoSansTC-normal.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    
+    <script src="js/fonts/NotoSansTC-normal.js"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -1207,11 +1208,6 @@
 
             // 修正後的 PDF 匯出功能
             exportPdfBtn.addEventListener('click', () => {
-                if (!window.jsPDF || !window.html2canvas) {
-                    alert('匯出所需函式庫尚未載入。');
-                    return;
-                }
-                
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF('p', 'mm', 'a4');
                 const currentDate = new Date().toLocaleString('zh-TW');
